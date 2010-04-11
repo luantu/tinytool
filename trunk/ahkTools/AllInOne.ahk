@@ -80,6 +80,7 @@ Define:
 	mcMenuName = &Multi-Clipboard (usage:Ctrl-Win-C/D/X)
 	raMenuName = Remove && when copy control text
 	lsMenuName = L&ist All (usage:Win-V)
+	ttMenuName = Enable TrayTip
 	ListWinTitle = == Clip List ==  (DoubleClick LButton: Change, DoubleClick RButton: Remove)
 
 Default:
@@ -87,6 +88,7 @@ Default:
 	notMultiClipboard := false
 	notRemoveAmp := false
 	notListAll := false
+	notShowTrayTip := false
 
 Init:
 	if (not ccMenuAdded) {
@@ -122,10 +124,18 @@ Init:
 		Menu, TRAY, Standard
 		lsMenuAdded := true
 	}
+	if (not ttMenuAdded) {
+		Menu, TRAY, NoStandard
+		Menu, TRAY, add, %ttMenuName%, ToggleShowTrayTip
+		Menu, TRAY, add
+		Menu, TRAY, Standard
+		ttMenuAdded := true
+	}
 	Gosub, UpdateMultiClipboardMenu
 	Gosub, UpdatePlainPasteMenu
 	Gosub, UpdateRemoveAmpMenu
 	Gosub, UpdateListAllMenu
+	Gosub, UpdateShowTrayTipMenu
 	OnMessage(WM_ACTIVATE, "GuiActivate")
 
 	if (notSingleRun) {
@@ -790,6 +800,9 @@ CopiedWait:
 	return
 
 ShowClipboardStatus:
+	if (notShowTrayTip) {
+		return
+	}
 	clipboardShowing := true
 	if (clipCount = "" or clipCount = 0) {
 		TrayTip, Clipboard, <empty>
@@ -1020,6 +1033,21 @@ UpdateListAllMenu:
 ToggleListAll:
 	notListAll := !notListAll
 	GoSub, UpdateListAllMenu
+	return
+
+; Update Show TrayTip menu status
+UpdateShowTrayTipMenu:
+	if (not notShowTrayTip) {
+		Menu, TRAY, Check, %ttMenuName%
+	} else {
+		Menu, TRAY, Uncheck, %ttMenuName%
+	}
+	return
+
+; Toggle Show TrayTip
+ToggleShowTrayTip:
+	notShowTrayTip := !notShowTrayTip
+	GoSub, UpdateShowTrayTipMenu
 	return
 
 ; Show Clipboard ToolTips
