@@ -30,6 +30,21 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 
 IDB_POINT               BITMAP                  "point.bmp"
 IDB_LABEL               BITMAP                  "label.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_APP_TITLE           "ScreenRuler"
+    IDS_COPY                "Copy : "
+    IDS_ABOUT               "Screen Ruler is a FREE software developed by Programus (programus@gmail.com)\nfor Lynn who was learning 3D CG and needs to measure pictures in screen."
+    IDS_ABOUT_TITLE         "About Screen Ruler"
+    IDC_SCREENRULER         "SCREENRULER"
+END
+
 #endif    // ニュートラル (既定) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -53,6 +68,8 @@ BEGIN
     POPUP "Popup"
     BEGIN
         MENUITEM "&Copy",                       IDM_COPY
+        MENUITEM SEPARATOR
+        MENUITEM "&About",                      IDM_ABOUT
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       IDM_EXIT
     END
@@ -95,19 +112,6 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_SCREENRULER         ICON                    "Ruler.ico"
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE 
-BEGIN
-    IDS_APP_TITLE           "ScreenRuler"
-    IDS_COPY                "Copy - "
-    IDC_SCREENRULER         "SCREENRULER"
-END
-
 #endif    // 日本語 resources
 /////////////////////////////////////////////////////////////////////////////
 

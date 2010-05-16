@@ -211,6 +211,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					}
 				}
 				break;
+			case IDM_ABOUT:
+				{
+					TCHAR* szAbout = new TCHAR[256]; 
+					::LoadString(hInst, IDS_ABOUT, szAbout, 256); 
+					TCHAR* szTitle = new TCHAR[32]; 
+					::LoadString(hInst, IDS_ABOUT_TITLE, szTitle, 32); 
+					::MessageBox(hWnd, szAbout, szTitle, MB_OK | MB_ICONINFORMATION); 
+				}
+				break; 
 			}
 			MinimizeMemory(); 
 		}
