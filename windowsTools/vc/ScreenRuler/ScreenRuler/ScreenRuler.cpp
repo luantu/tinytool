@@ -170,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	static int pressedArrowKeys = 0; 
 	static int oldFocusPointFlag = FPF_BOTH; 
+	static LONG lastTickCount = 0; 
 
 	BOOL bNeedRedraw = FALSE; 
 
@@ -202,6 +203,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if (::OpenClipboard(hWnd))
 					{
+						switch(vrd->m_focusPointFlag)
+						{
+						case FPF_END:
+							vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
+							break; 
+						case FPF_START:
+							vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
+							break; 
+						default:
+							vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
+							break; 
+						}
 						EmptyClipboard(); 
 						size_t len = _tcslen(szCopy); 
 						HGLOBAL hglbCopy = ::GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(TCHAR));
@@ -218,6 +231,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					}
 				}
 				break;
+			case IDM_CROSS:
+				vrd->m_showCross = !vrd->m_showCross; 
+				bNeedRedraw = TRUE; 
+				break; 
 			case IDM_ABOUT:
 				{
 					TCHAR* szAbout = new TCHAR[256]; 
@@ -293,6 +310,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 		}
 		break; 
+	case WM_RBUTTONDOWN:
+		{
+			POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
+			if (vrd->IsPointIntoEndPoint(&mousePt))
+			{
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
+				vrd->m_focusPointFlag = FPF_END;
+			}
+			else if (vrd->IsPointIntoStartPoint(&mousePt))
+			{
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_START; 
+				vrd->m_focusPointFlag = FPF_START;
+			}
+			else
+			{
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_BOTH; 
+				vrd->m_focusPointFlag = FPF_BOTH;
+			}
+		}
+		break; 
+	case WM_CONTEXTMENU:
+		{
+			POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
+			HMENU hMenu = ::LoadMenu(hInst, MAKEINTRESOURCE(IDC_SCREENRULER)); 
+			if (hMenu != NULL)
+			{
+				HMENU hPopupMenu = ::GetSubMenu(hMenu, 0); 
+
+				switch(vrd->m_focusPointFlag)
+				{
+				case FPF_END:
+					vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
+					break; 
+				case FPF_START:
+					vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
+					break; 
+				default:
+					vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
+					break; 
+				}
+
+				int l = MAX_COPY_LEN + 16; 
+				TCHAR* szText = new TCHAR[l]; 
+				LoadString(hInst, IDS_COPY, szText, l); 
+				_tcscat_s(szText, l, szCopy); 
+				::CheckMenuItem(hMenu, IDM_CROSS, MF_BYCOMMAND | (vrd->m_showCross ? MF_CHECKED : MF_UNCHECKED)); 
+
+				MENUITEMINFO* pmiiCopy = new MENUITEMINFO; 
+				ZeroMemory(pmiiCopy, sizeof(*pmiiCopy)); 
+				pmiiCopy->cbSize = sizeof(*pmiiCopy); 
+				pmiiCopy->fMask = MIIM_STRING; 
+				pmiiCopy->dwTypeData = szText; 
+				pmiiCopy->cch = (UINT) _tcslen(szText); 
+				if (::SetMenuItemInfo(hPopupMenu, IDM_COPY, FALSE, pmiiCopy))
+				{
+					DrawMenuBar(hWnd); 
+				}
+				::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL); 
+				DestroyMenu(hMenu); 
+				delete[] szText; 
+			}
+		}
+		break; 
 	case WM_KEYDOWN:
 		{
 			switch(wParam)
@@ -339,53 +419,58 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break; 
 	case WM_TIMER:
 		{
-			switch(wParam)
+			LONG tickCount = ::GetTickCount(); 
+			if (tickCount - lastTickCount >= KDT_DELAY)
 			{
-			case IDT_KEY_DETECT:
+				switch(wParam)
 				{
-					int dx = 0; 
-					int dy = 0; 
-					if (::GetAsyncKeyState(VK_LEFT) & 0x8000)
+				case IDT_KEY_DETECT:
 					{
-						dx -= 1; 
+						int dx = 0; 
+						int dy = 0; 
+						if (::GetAsyncKeyState(VK_LEFT) & 0x8000)
+						{
+							dx -= 1; 
+						}
+						if (::GetAsyncKeyState(VK_RIGHT) & 0x8000)
+						{
+							dx += 1; 
+						}
+						if (::GetAsyncKeyState(VK_UP) & 0x8000)
+						{
+							dy -= 1; 
+						}
+						if (::GetAsyncKeyState(VK_DOWN) & 0x8000)
+						{
+							dy += 1; 
+						}
+						dx = dx > 0 ? 1 : (dx == 0 ? 0 : -1); 
+						dy = dy > 0 ? 1 : (dy == 0 ? 0 : -1); 
+						if (::GetAsyncKeyState(VK_CONTROL) & 0x8000)
+						{
+							dx <<= 3; 
+							dy <<= 3;
+						}
+						if (vrd->m_focusPointFlag & 1)
+						{
+							vrd->startPt.x += dx; 
+							vrd->startPt.y += dy; 
+						}
+						if (vrd->m_focusPointFlag & 2)
+						{
+							vrd->endPt.x += dx; 
+							vrd->endPt.y += dy;
+						}
+						if (vrd->m_focusPointFlag != 3)
+						{
+							vrd->AdjustLineLabelOrientation(); 
+						}
+						bNeedRedraw = (dx != 0 || dy != 0); 
 					}
-					if (::GetAsyncKeyState(VK_RIGHT) & 0x8000)
-					{
-						dx += 1; 
-					}
-					if (::GetAsyncKeyState(VK_UP) & 0x8000)
-					{
-						dy -= 1; 
-					}
-					if (::GetAsyncKeyState(VK_DOWN) & 0x8000)
-					{
-						dy += 1; 
-					}
-					dx = dx > 0 ? 1 : (dx == 0 ? 0 : -1); 
-					dy = dy > 0 ? 1 : (dy == 0 ? 0 : -1); 
-					if (::GetAsyncKeyState(VK_CONTROL) & 0x8000)
-					{
-						dx <<= 3; 
-						dy <<= 3;
-					}
-					if (vrd->m_focusPointFlag & 1)
-					{
-						vrd->startPt.x += dx; 
-						vrd->startPt.y += dy; 
-					}
-					if (vrd->m_focusPointFlag & 2)
-					{
-						vrd->endPt.x += dx; 
-						vrd->endPt.y += dy;
-					}
-					if (vrd->m_focusPointFlag != 3)
-					{
-						vrd->AdjustLineLabelOrientation(); 
-					}
-					bNeedRedraw = (dx != 0 || dy != 0); 
+					break; 
 				}
-				break; 
 			}
+			lastTickCount = tickCount; 
 		}
 		break;
 	case WM_KEYUP:
@@ -411,48 +496,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 		}
 		break;
-	case WM_CONTEXTMENU:
-		{
-			POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
-			HMENU hMenu = ::LoadMenu(hInst, MAKEINTRESOURCE(IDC_SCREENRULER)); 
-			if (hMenu != NULL)
-			{
-				HMENU hPopupMenu = ::GetSubMenu(hMenu, 0); 
-
-				if (vrd->IsPointIntoEndPoint(&pt))
-				{
-					vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
-				}
-				else if (vrd->IsPointIntoStartPoint(&pt))
-				{
-					vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
-				}
-				else
-				{
-					vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
-				}
-
-				int l = MAX_COPY_LEN + 16; 
-				TCHAR* szText = new TCHAR[l]; 
-				LoadString(hInst, IDS_COPY, szText, l); 
-				_tcscat_s(szText, l, szCopy); 
-
-				MENUITEMINFO* pmiiCopy = new MENUITEMINFO; 
-				ZeroMemory(pmiiCopy, sizeof(*pmiiCopy)); 
-				pmiiCopy->cbSize = sizeof(*pmiiCopy); 
-				pmiiCopy->fMask = MIIM_STRING; 
-				pmiiCopy->dwTypeData = szText; 
-				pmiiCopy->cch = (UINT) _tcslen(szText); 
-				if (::SetMenuItemInfo(hPopupMenu, IDM_COPY, FALSE, pmiiCopy))
-				{
-					DrawMenuBar(hWnd); 
-				}
-				::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL); 
-				DestroyMenu(hMenu); 
-				delete[] szText; 
-			}
-		}
-		break; 
 	case WM_SETFOCUS:
 		if (vrd != NULL)
 		{
@@ -464,6 +507,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_KILLFOCUS:
 		if (vrd != NULL)
 		{
+			pressedArrowKeys = 0; 
 			oldFocusPointFlag = vrd->m_focusPointFlag; 
 			vrd->m_focusPointFlag = FPF_NONE; 
 			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 

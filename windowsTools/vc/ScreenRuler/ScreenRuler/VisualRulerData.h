@@ -47,9 +47,11 @@ public:
 	COLORREF	m_focusPointColor;
 	COLORREF	m_textColor; 
 	COLORREF	m_disTextColor; 
+	COLORREF	m_crossLineColor;
 
 	SIZE		m_boundary; 
 	int			m_focusPointFlag; 
+	BOOL		m_showCross; 
 
 protected:
 	BOOL DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in BOOL bFocus); 

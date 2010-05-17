@@ -7,12 +7,14 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 	HINSTANCE hInst = ::GetModuleHandle(NULL); 
 
 	this->m_focusPointFlag = 3; 
+	this->m_showCross = FALSE; 
 
 	this->m_pointColor = RGB(0, 0, 0); 
 	this->m_focusPointColor = RGB(255, 0, 0); 
 	this->m_disLineColor = RGB(100, 100, 255); 
-	this->m_textColor = RGB(0, 0, 0); 
-	this->m_disTextColor = RGB(50, 50, 255); 
+	this->m_textColor = RGB(254, 254, 254); 
+	this->m_disTextColor = RGB(255, 255, 128); 
+	this->m_crossLineColor = RGB(255, 128, 0); 
 
 	this->m_hbmPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_POINT)); 
 	this->m_hbmFocusPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_FOCUS_POINT)); 
@@ -86,6 +88,25 @@ void VisualRulerData::CalculateCapture()
 
 BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in BOOL bFocus)
 {
+	// if cross needed to be shown, 
+	if (this->m_showCross)
+	{	// draw it
+		// draw horizontal line
+		COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_crossLineColor); 
+		HGDIOBJ hOldPen = ::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
+		int dx = this->m_pointSize.cx >> 1;
+		int dy = this->m_pointSize.cy >> 1; 
+		::MoveToEx(hdc, 0, pt.y, NULL); 
+		::LineTo(hdc, pt.x - dx, pt.y); 
+		::MoveToEx(hdc, pt.x + dx, pt.y, NULL); 
+		::LineTo(hdc, this->m_boundary.cx, pt.y); 
+		::MoveToEx(hdc, pt.x, 0, NULL); 
+		::LineTo(hdc, pt.x, pt.y - dy); 
+		::MoveToEx(hdc, pt.x, pt.y + dy, NULL); 
+		::LineTo(hdc, pt.x, this->m_boundary.cy); 
+		::SelectObject(hdc, hOldPen); 
+		::SetDCPenColor(hdc, oldPenColor); 
+	}
 	// Load bitmap
 	BITMAP bm; 
 	HBITMAP hbm = bFocus ? this->m_hbmFocusPoint : this->m_hbmPoint; 
