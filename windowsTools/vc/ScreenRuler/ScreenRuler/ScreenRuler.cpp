@@ -127,7 +127,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    {
       return FALSE;
    }
-   ::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED); 
+   SetTopMost(hWnd); 
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
@@ -173,6 +173,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static LONG lastTickCount = 0; 
 
 	BOOL bNeedRedraw = FALSE; 
+	BOOL bNeedMinimizeMemory = FALSE; 
 
 	switch (message)
 	{
@@ -182,6 +183,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED/* | WS_EX_TOOLWINDOW*/);
 			// Make this window alpha
 			SetTransValue(hWnd, FOCUS_TRANS_VALUE); 
+			bNeedMinimizeMemory = TRUE; 
 		}
 		break; 
 	case WM_PAINT:
@@ -245,7 +247,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				break; 
 			}
-			MinimizeMemory(); 
+			bNeedMinimizeMemory = TRUE; 
 		}
 		break; 
 	case WM_LBUTTONDOWN:
@@ -282,7 +284,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			ClipCursor(NULL); 
 			::RedrawWindow(hWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_UPDATENOW); 
 			::ReleaseCapture(); 
-			MinimizeMemory(); 
+			bNeedMinimizeMemory = TRUE; 
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -489,7 +491,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						vrd->AdjustLabelOrientation(); 
 						vrd->AdjustLineLabelOrientation(); 
 						bNeedRedraw = TRUE; 
-						MinimizeMemory(); 
 					}
 				}
 				break; 
@@ -502,7 +503,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			vrd->m_focusPointFlag = oldFocusPointFlag; 
 			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 
 		}
+		SetTopMost(hWnd); 
 		SetTransValue(hWnd, FOCUS_TRANS_VALUE); 
+		bNeedMinimizeMemory = TRUE; 
 		break; 
 	case WM_KILLFOCUS:
 		if (vrd != NULL)
@@ -512,7 +515,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			vrd->m_focusPointFlag = FPF_NONE; 
 			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 
 		}
+		SetTopMost(hWnd); 
 		SetTransValue(hWnd, NOFOCUS_TRANS_VALUE); 
+		bNeedMinimizeMemory = TRUE; 
 		break; 
 	case WM_DESTROY:
 		EndInstance(); 
@@ -523,6 +528,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	if (bNeedRedraw)
 	{
 		::RedrawWindow(hWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_UPDATENOW); 
+	}
+	if (bNeedMinimizeMemory || bNeedRedraw)
+	{
+		MinimizeMemory(); 
 	}
 
 	return 0;
@@ -549,4 +558,9 @@ BOOL SetTransValue(HWND hWnd, BYTE transValue)
 		flag |= LWA_ALPHA; 
 	}
 	return SetLayeredWindowAttributes(hWnd, COLOR_TRANS, transValue, flag);
+}
+
+void SetTopMost(__in HWND hWnd)
+{
+	::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED | SWP_NOACTIVATE); 
 }
