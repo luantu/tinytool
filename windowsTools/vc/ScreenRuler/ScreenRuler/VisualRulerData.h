@@ -11,6 +11,11 @@
 #define LOM_TOPBOTTOM	1
 #define LOM_RIGHTLEFT	2
 
+#define FPF_NONE		0
+#define	FPF_START		1
+#define FPF_END			2
+#define FPF_BOTH		3
+
 
 class VisualRulerData :
 	public RulerData
@@ -33,18 +38,21 @@ protected:
 	int			m_orientation; 
 
 	HBITMAP		m_hbmPoint; 
+	HBITMAP		m_hbmFocusPoint;
 	HBITMAP		m_hbmLabel;
 
 public:
 	COLORREF	m_disLineColor; 
 	COLORREF	m_pointColor; 
+	COLORREF	m_focusPointColor;
 	COLORREF	m_textColor; 
 	COLORREF	m_disTextColor; 
 
 	SIZE		m_boundary; 
+	int			m_focusPointFlag; 
 
 protected:
-	BOOL DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt); 
+	BOOL DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in BOOL bFocus); 
 	POINT GetPointLabelPos(__in POINT pt, __in int orientation); 
 	RECT GetPointLabelRect(__in POINT pt, __in int orientation); 
 

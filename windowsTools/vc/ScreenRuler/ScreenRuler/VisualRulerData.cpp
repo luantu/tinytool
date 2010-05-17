@@ -6,12 +6,16 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 	this->m_hWnd = hWnd; 
 	HINSTANCE hInst = ::GetModuleHandle(NULL); 
 
-	this->m_pointColor = RGB(255, 0, 0); 
+	this->m_focusPointFlag = 3; 
+
+	this->m_pointColor = RGB(0, 0, 0); 
+	this->m_focusPointColor = RGB(255, 0, 0); 
 	this->m_disLineColor = RGB(100, 100, 255); 
 	this->m_textColor = RGB(0, 0, 0); 
 	this->m_disTextColor = RGB(50, 50, 255); 
 
 	this->m_hbmPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_POINT)); 
+	this->m_hbmFocusPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_FOCUS_POINT)); 
 	this->m_hbmLabel = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_LABEL)); 
 
 	this->m_pointSize.cx = 21;
@@ -80,13 +84,14 @@ void VisualRulerData::CalculateCapture()
 		= -(m_pointSize.cy >> 1); 
 }
 
-BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt)
+BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in BOOL bFocus)
 {
 	// Load bitmap
 	BITMAP bm; 
+	HBITMAP hbm = bFocus ? this->m_hbmFocusPoint : this->m_hbmPoint; 
 
-	HBITMAP hbmOld = (HBITMAP) ::SelectObject(hdcMem, this->m_hbmPoint); 
-	::GetObject(this->m_hbmPoint, sizeof(bm), &bm); 
+	HBITMAP hbmOld = (HBITMAP) ::SelectObject(hdcMem, hbm); 
+	::GetObject(hbm, sizeof(bm), &bm); 
 
 	// recalculate the size
 	BOOL bSizeChanged = ((this->m_pointSize.cx == bm.bmWidth) || (this->m_pointSize.cy == bm.bmHeight)); 
@@ -104,7 +109,7 @@ BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt)
 	::SelectObject(hdcMem, hbmOld); 
 
 	// draw the point
-	COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_pointColor); 
+	COLORREF oldPenColor = ::SetDCPenColor(hdc, bFocus ? this->m_focusPointColor : this->m_pointColor); 
 	HGDIOBJ hOldPen = ::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
 	MoveToEx(hdc, pt.x, pt.y, NULL); 
 	LineTo(hdc, pt.x, pt.y + 1); 
@@ -223,11 +228,14 @@ void VisualRulerData::Draw()
 
 	this->DrawDistanceLine(hdc, hdcMem); 
 
-	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->startPt) || isSizeChanged; 
+	BOOL bStartFocus = this->m_focusPointFlag & FPF_START; 
+	BOOL bEndFocus = this->m_focusPointFlag & FPF_END; 
+
+	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->startPt, bStartFocus && !bEndFocus) || isSizeChanged; 
 	this->GetStartPoint(&szText, 128); 
 	isSizeChanged = this->DrawLabel(hdc, hdcMem, this->GetPointLabelPos(this->startPt, this->GetStartOrientation()), szText) || isSizeChanged; 
 
-	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->endPt) || isSizeChanged; 
+	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->endPt, bEndFocus && !bStartFocus) || isSizeChanged; 
 	this->GetEndPoint(&szText, 128); 
 	isSizeChanged = this->DrawLabel(hdc, hdcMem, this->GetPointLabelPos(this->endPt, this->GetEndOrientation()), szText) || isSizeChanged; 
 
