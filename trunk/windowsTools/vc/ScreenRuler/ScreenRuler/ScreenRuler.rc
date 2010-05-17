@@ -34,13 +34,27 @@ IDB_FOCUS_POINT         BITMAP                  "focus_point.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Accelerator
+//
+
+IDC_SCREENRULER ACCELERATORS 
+BEGIN
+    "C",            IDM_COPY,               VIRTKEY, CONTROL, NOINVERT
+    "X",            IDM_CROSS,              VIRTKEY, NOINVERT
+    VK_ADD,         IDM_CROSS,              VIRTKEY, NOINVERT
+    VK_OEM_PLUS,    IDM_CROSS,              VIRTKEY, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
 STRINGTABLE 
 BEGIN
     IDS_APP_TITLE           "ScreenRuler"
-    IDS_COPY                "Copy : "
+    IDS_COPY                "&Copy : "
     IDS_ABOUT               "Screen Ruler is a FREE software developed by Programus (programus@gmail.com)\nfor Lynn who was learning 3D CG and needs to measure pictures in screen."
     IDS_ABOUT_TITLE         "About Screen Ruler"
     IDC_SCREENRULER         "SCREENRULER"
@@ -69,6 +83,7 @@ BEGIN
     POPUP "Popup"
     BEGIN
         MENUITEM "&Copy",                       IDM_COPY
+        MENUITEM "C&ross",                      IDM_CROSS
         MENUITEM SEPARATOR
         MENUITEM "&About",                      IDM_ABOUT
         MENUITEM SEPARATOR
