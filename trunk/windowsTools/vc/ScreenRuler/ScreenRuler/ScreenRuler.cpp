@@ -7,10 +7,13 @@
 
 #define MAX_LOADSTRING 100
 
-#define COLOR_TRANS RGB(255, 255, 255)
+#define COLOR_TRANS			RGB(255, 255, 255)
 #define NOFOCUS_TRANS_VALUE	128
 #define FOCUS_TRANS_VALUE	255
 #define MAX_COPY_LEN		128
+
+#define IDT_KEY_DETECT		1
+#define KDT_DELAY			64
 
 // グローバル変数:
 HINSTANCE hInst;								// 現在のインターフェイス
@@ -164,7 +167,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static POINT oldMousePt; 
 	static POINT oldStartPt; 
 	static POINT oldEndPt; 
-	static int draggingPointFlag = 0; 
+
+	static int pressedArrowKeys = 0; 
+	static int oldFocusPointFlag = FPF_BOTH; 
+
+	BOOL bNeedRedraw = FALSE; 
 
 	switch (message)
 	{
@@ -236,17 +243,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			oldEndPt = vrd->endPt; 
 			if (vrd->IsPointIntoEndPoint(&mousePt))
 			{
-				draggingPointFlag = 2; 
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
+				vrd->m_focusPointFlag = FPF_END;
 			}
 			else if (vrd->IsPointIntoStartPoint(&mousePt))
 			{
-				draggingPointFlag = 1; 
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_START; 
+				vrd->m_focusPointFlag = FPF_START;
 			}
 			else
 			{
-				draggingPointFlag = 3; 
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_BOTH; 
+				vrd->m_focusPointFlag = FPF_BOTH;
 			}
-
 		}
 		break; 
 	case WM_LBUTTONUP:
@@ -266,17 +275,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
 				int dx = mousePt.x - oldMousePt.x; 
 				int dy = mousePt.y - oldMousePt.y; 
-				if (draggingPointFlag & 1)
+				if (vrd->m_focusPointFlag & 1)
 				{
 					vrd->startPt.x = oldStartPt.x + dx; 
 					vrd->startPt.y = oldStartPt.y + dy; 
 				}
-				if (draggingPointFlag & 2)
+				if (vrd->m_focusPointFlag & 2)
 				{
 					vrd->endPt.x = oldEndPt.x + dx; 
 					vrd->endPt.y = oldEndPt.y + dy; 
 				}
-				if (draggingPointFlag != 3)
+				if (vrd->m_focusPointFlag != 3)
 				{
 					vrd->AdjustLineLabelOrientation(); 
 				}
@@ -286,12 +295,122 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break; 
 	case WM_KEYDOWN:
 		{
-			if (wParam == VK_ESCAPE)
+			switch(wParam)
 			{
+			case VK_ESCAPE:
+				// ESC Key - Quit
 				EndInstance(); 
+				break;
+			case '0':
+			case '3':
+			case VK_NUMPAD0:
+			case VK_NUMPAD3:
+				// 0 or 3 - Select both as moving focus point
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_BOTH; 
+				vrd->m_focusPointFlag = FPF_BOTH;
+				break; 
+			case '1':
+			case VK_NUMPAD1:
+				// 1 - Select start point as moving focus point
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_START; 
+				vrd->m_focusPointFlag = FPF_START;
+				break; 
+			case '2':
+			case VK_NUMPAD2:
+				// 2 - Select end point as moving focus point
+				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
+				vrd->m_focusPointFlag = FPF_END;
+				break; 
+			case VK_LEFT:
+			case VK_RIGHT:
+			case VK_UP:
+			case VK_DOWN:
+				{
+					if (pressedArrowKeys == 0) 
+					{
+						::SetTimer(hWnd, IDT_KEY_DETECT, KDT_DELAY, NULL); 
+						::PostMessage(hWnd, WM_TIMER, IDT_KEY_DETECT, 0); 
+					}
+					pressedArrowKeys |= (1 << (wParam - VK_LEFT)); 
+				}
+				break; 
 			}
 		}
 		break; 
+	case WM_TIMER:
+		{
+			switch(wParam)
+			{
+			case IDT_KEY_DETECT:
+				{
+					int dx = 0; 
+					int dy = 0; 
+					if (::GetAsyncKeyState(VK_LEFT) & 0x8000)
+					{
+						dx -= 1; 
+					}
+					if (::GetAsyncKeyState(VK_RIGHT) & 0x8000)
+					{
+						dx += 1; 
+					}
+					if (::GetAsyncKeyState(VK_UP) & 0x8000)
+					{
+						dy -= 1; 
+					}
+					if (::GetAsyncKeyState(VK_DOWN) & 0x8000)
+					{
+						dy += 1; 
+					}
+					dx = dx > 0 ? 1 : (dx == 0 ? 0 : -1); 
+					dy = dy > 0 ? 1 : (dy == 0 ? 0 : -1); 
+					if (::GetAsyncKeyState(VK_CONTROL) & 0x8000)
+					{
+						dx <<= 3; 
+						dy <<= 3;
+					}
+					if (vrd->m_focusPointFlag & 1)
+					{
+						vrd->startPt.x += dx; 
+						vrd->startPt.y += dy; 
+					}
+					if (vrd->m_focusPointFlag & 2)
+					{
+						vrd->endPt.x += dx; 
+						vrd->endPt.y += dy;
+					}
+					if (vrd->m_focusPointFlag != 3)
+					{
+						vrd->AdjustLineLabelOrientation(); 
+					}
+					bNeedRedraw = (dx != 0 || dy != 0); 
+				}
+				break; 
+			}
+		}
+		break;
+	case WM_KEYUP:
+		{
+			switch(wParam)
+			{
+			case VK_LEFT:
+			case VK_RIGHT:
+			case VK_UP:
+			case VK_DOWN:
+				{
+					pressedArrowKeys &= ~(1 << (wParam - VK_LEFT)); 
+					if (pressedArrowKeys == 0)
+					{
+						::KillTimer(hWnd, IDT_KEY_DETECT); 
+						vrd->AdjustLabelOrientation(); 
+						vrd->AdjustLineLabelOrientation(); 
+						bNeedRedraw = TRUE; 
+						MinimizeMemory(); 
+					}
+				}
+				break; 
+			}
+		}
+		break;
 	case WM_CONTEXTMENU:
 		{
 			POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
@@ -335,9 +454,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break; 
 	case WM_SETFOCUS:
+		if (vrd != NULL)
+		{
+			vrd->m_focusPointFlag = oldFocusPointFlag; 
+			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 
+		}
 		SetTransValue(hWnd, FOCUS_TRANS_VALUE); 
 		break; 
 	case WM_KILLFOCUS:
+		if (vrd != NULL)
+		{
+			oldFocusPointFlag = vrd->m_focusPointFlag; 
+			vrd->m_focusPointFlag = FPF_NONE; 
+			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 
+		}
 		SetTransValue(hWnd, NOFOCUS_TRANS_VALUE); 
 		break; 
 	case WM_DESTROY:
@@ -346,6 +476,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
+	if (bNeedRedraw)
+	{
+		::RedrawWindow(hWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_UPDATENOW); 
+	}
+
 	return 0;
 }
 

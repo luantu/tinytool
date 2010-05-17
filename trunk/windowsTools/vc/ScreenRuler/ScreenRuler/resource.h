@@ -10,6 +10,8 @@
 #define IDR_MAINFRAME                   128
 #define IDB_POINT                       129
 #define IDB_LABEL                       130
+#define IDB_POINT1                      131
+#define IDB_FOCUS_POINT                 131
 #define IDI_SCREENRULER                 132
 #define IDM_EXIT                        32771
 #define IDM_COPY                        32772
