@@ -168,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static POINT oldStartPt; 
 	static POINT oldEndPt; 
 
-	static int pressedArrowKeys = 0; 
+	static int pressedArrowKeys = 0; // Flag Bits: |     |     |     |Mouse|Left|Up|Right|Down|
 	static int oldFocusPointFlag = FPF_BOTH; 
 	static LONG lastTickCount = 0; 
 
@@ -256,6 +256,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			RECT rect; 
 			::GetWindowRect(hWnd, &rect); 
 			::ClipCursor(&rect); 
+			pressedArrowKeys |= (1 << 4); 
 			POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
 			oldMousePt = mousePt; 
 			oldStartPt = vrd->startPt; 
@@ -279,8 +280,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break; 
 	case WM_LBUTTONUP:
 		{
-			vrd->AdjustLabelOrientation(); 
-			vrd->AdjustLineLabelOrientation(); 
+			pressedArrowKeys &= ~(1 << 4); 
+			if (pressedArrowKeys == 0)
+			{
+				vrd->AdjustLabelOrientation(); 
+				vrd->AdjustLineLabelOrientation(); 
+			}
 			ClipCursor(NULL); 
 			::RedrawWindow(hWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_UPDATENOW); 
 			::ReleaseCapture(); 
@@ -294,6 +299,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
 				int dx = mousePt.x - oldMousePt.x; 
 				int dy = mousePt.y - oldMousePt.y; 
+				CrossMove(VK_SHIFT, &dx, &dy); 
 				if (vrd->m_focusPointFlag & 1)
 				{
 					vrd->startPt.x = oldStartPt.x + dx; 
@@ -387,6 +393,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case '3':
 			case VK_NUMPAD0:
 			case VK_NUMPAD3:
+			case VK_RETURN:
 				// 0 or 3 - Select both as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_BOTH; 
 				vrd->m_focusPointFlag = FPF_BOTH;
@@ -402,6 +409,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// 2 - Select end point as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
 				vrd->m_focusPointFlag = FPF_END;
+				break; 
+			case VK_TAB:
+				// switch points
+				bNeedRedraw = TRUE; 
+				vrd->m_focusPointFlag ^= FPF_BOTH; 
 				break; 
 			case VK_LEFT:
 			case VK_RIGHT:
@@ -419,6 +431,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 		}
 		break; 
+	case WM_KEYUP:
+		{
+			switch(wParam)
+			{
+			case VK_LEFT:
+			case VK_RIGHT:
+			case VK_UP:
+			case VK_DOWN:
+				{
+					pressedArrowKeys &= ~(1 << (wParam - VK_LEFT)); 
+					if (pressedArrowKeys == 0)
+					{
+						::KillTimer(hWnd, IDT_KEY_DETECT); 
+						vrd->AdjustLabelOrientation(); 
+						vrd->AdjustLineLabelOrientation(); 
+						bNeedRedraw = TRUE; 
+					}
+				}
+				break; 
+			}
+		}
+		break;
 	case WM_TIMER:
 		{
 			LONG tickCount = ::GetTickCount(); 
@@ -448,7 +482,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						}
 						dx = dx > 0 ? 1 : (dx == 0 ? 0 : -1); 
 						dy = dy > 0 ? 1 : (dy == 0 ? 0 : -1); 
-						if (::GetAsyncKeyState(VK_CONTROL) & 0x8000)
+						if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000) || (::GetAsyncKeyState(VK_SHIFT) & 0x8000))
 						{
 							dx <<= 3; 
 							dy <<= 3;
@@ -473,28 +507,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 			lastTickCount = tickCount; 
-		}
-		break;
-	case WM_KEYUP:
-		{
-			switch(wParam)
-			{
-			case VK_LEFT:
-			case VK_RIGHT:
-			case VK_UP:
-			case VK_DOWN:
-				{
-					pressedArrowKeys &= ~(1 << (wParam - VK_LEFT)); 
-					if (pressedArrowKeys == 0)
-					{
-						::KillTimer(hWnd, IDT_KEY_DETECT); 
-						vrd->AdjustLabelOrientation(); 
-						vrd->AdjustLineLabelOrientation(); 
-						bNeedRedraw = TRUE; 
-					}
-				}
-				break; 
-			}
 		}
 		break;
 	case WM_SETFOCUS:
@@ -535,6 +547,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 
 	return 0;
+}
+
+void CrossMove(__in int vKey, __inout int* dx, __inout int* dy)
+{
+	if (GetAsyncKeyState(vKey))
+	{
+		int adx = abs(*dx); 
+		int ady = abs(*dy); 
+		if (adx > ady)
+		{
+			*dy = 0; 
+		}
+		else if (ady > adx)
+		{
+			*dx = 0; 
+		}
+	}
 }
 
 void EndInstance()
