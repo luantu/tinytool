@@ -391,6 +391,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				break;
 			case '0':
 			case '3':
+			case 'R':
 			case VK_NUMPAD0:
 			case VK_NUMPAD3:
 			case VK_RETURN:
@@ -399,12 +400,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				vrd->m_focusPointFlag = FPF_BOTH;
 				break; 
 			case '1':
+			case 'Q':
 			case VK_NUMPAD1:
 				// 1 - Select start point as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_START; 
 				vrd->m_focusPointFlag = FPF_START;
 				break; 
 			case '2':
+			case 'E':
 			case VK_NUMPAD2:
 				// 2 - Select end point as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
@@ -414,7 +417,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// switch points
 				bNeedRedraw = TRUE; 
 				vrd->m_focusPointFlag ^= FPF_BOTH; 
+				if (vrd->m_focusPointFlag == FPF_BOTH || vrd->m_focusPointFlag == FPF_NONE)
+				{
+					vrd->m_focusPointFlag = FPF_START; 
+				}
 				break; 
+			case 'W':
+			case 'S':
+			case 'A':
+			case 'D':
+				switch(wParam)
+				{
+				case 'W':
+					wParam = VK_UP;
+					break;
+				case 'S':
+					wParam = VK_DOWN;
+					break;
+				case 'A':
+					wParam = VK_LEFT;
+					break;
+				case 'D':
+					wParam = VK_RIGHT;
+					break; 
+				}
 			case VK_LEFT:
 			case VK_RIGHT:
 			case VK_UP:
@@ -435,6 +461,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			switch(wParam)
 			{
+			case 'W':
+			case 'S':
+			case 'A':
+			case 'D':
+				switch(wParam)
+				{
+				case 'W':
+					wParam = VK_UP;
+					break;
+				case 'S':
+					wParam = VK_DOWN;
+					break;
+				case 'A':
+					wParam = VK_LEFT;
+					break;
+				case 'D':
+					wParam = VK_RIGHT;
+					break; 
+				}
 			case VK_LEFT:
 			case VK_RIGHT:
 			case VK_UP:
@@ -464,28 +509,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					{
 						int dx = 0; 
 						int dy = 0; 
-						if (::GetAsyncKeyState(VK_LEFT) & 0x8000)
+						if ((::GetAsyncKeyState(VK_LEFT) & 0x8000) || (::GetAsyncKeyState('A') & 0x8000))
 						{
 							dx -= 1; 
 						}
-						if (::GetAsyncKeyState(VK_RIGHT) & 0x8000)
+						if ((::GetAsyncKeyState(VK_RIGHT) & 0x8000) || (::GetAsyncKeyState('D') & 0x8000))
 						{
 							dx += 1; 
 						}
-						if (::GetAsyncKeyState(VK_UP) & 0x8000)
+						if ((::GetAsyncKeyState(VK_UP) & 0x8000) || (::GetAsyncKeyState('W') & 0x8000))
 						{
 							dy -= 1; 
 						}
-						if (::GetAsyncKeyState(VK_DOWN) & 0x8000)
+						if ((::GetAsyncKeyState(VK_DOWN) & 0x8000) || (::GetAsyncKeyState('S') & 0x8000))
 						{
 							dy += 1; 
 						}
 						dx = dx > 0 ? 1 : (dx == 0 ? 0 : -1); 
 						dy = dy > 0 ? 1 : (dy == 0 ? 0 : -1); 
-						if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000) || (::GetAsyncKeyState(VK_SHIFT) & 0x8000))
+						if ((::GetAsyncKeyState(VK_SHIFT) & 0x8000))
 						{
 							dx <<= 3; 
 							dy <<= 3;
+						}
+						if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000))
+						{
+							dx <<= 6; 
+							dy <<= 6;
 						}
 						if (vrd->m_focusPointFlag & 1)
 						{

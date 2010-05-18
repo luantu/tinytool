@@ -135,8 +135,8 @@ IDI_SCREENRULER         ICON                    "Ruler.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,0,0
- PRODUCTVERSION 0,1,0,0
+ FILEVERSION 0,1,0,1
+ PRODUCTVERSION 0,1,0,1
  FILEFLAGSMASK 0x37L
 #ifdef _DEBUG
  FILEFLAGS 0x21L
@@ -153,13 +153,13 @@ BEGIN
         BEGIN
             VALUE "Comments", "This software is developed special for Lynn. Wish her happy!"
             VALUE "FileDescription", "Screen Ruler"
-            VALUE "FileVersion", "0, 1, 0, 0"
+            VALUE "FileVersion", "0, 1, 0, 1"
             VALUE "InternalName", "ScrRuler"
             VALUE "LegalCopyright", "FREE software from Programus"
             VALUE "OriginalFilename", "ScreenRuler.exe"
             VALUE "ProductName", "Screen Ruler"
-            VALUE "ProductVersion", "0, 1, 0, 0"
-            VALUE "SpecialBuild", "20100517"
+            VALUE "ProductVersion", "0, 1, 0, 1"
+            VALUE "SpecialBuild", "20100519"
         END
     END
     BLOCK "VarFileInfo"
