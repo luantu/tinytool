@@ -19,6 +19,7 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 	this->m_hbmPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_POINT)); 
 	this->m_hbmFocusPoint = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_FOCUS_POINT)); 
 	this->m_hbmLabel = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_LABEL)); 
+	this->m_bLabelBMReady = FALSE; 
 
 	this->m_pointSize.cx = 21;
 	this->m_pointSize.cy = 21; 
@@ -164,27 +165,42 @@ RECT VisualRulerData::GetPointLabelRect(__in POINT pt, __in int orientation)
 	return rect; 
 }
 
-BOOL VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText)
+BOOL VisualRulerData::PrepareLabelMemDC(__inout HDC hdcMem)
 {
-	return this->DrawLabel(hdc, hdcMem, pt, szText, this->m_textColor); 
-}
-
-BOOL VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText, COLORREF color)
-{
-	// load bitmap
-	BITMAP bm; 
-	
-	HBITMAP hbmOld = (HBITMAP) ::SelectObject(hdcMem, this->m_hbmLabel); 
-	::GetObject(this->m_hbmLabel, sizeof(bm), &bm); 
-
-	// recalculate the size
-	BOOL bSizeChanged = ((this->m_labelSize.cx != bm.bmWidth) || (this->m_labelSize.cy != bm.bmHeight)); 
-	if (bSizeChanged)
+	BOOL bSizeChanged = FALSE; 
+	if (this->m_bLabelBMReady)
 	{
-		this->m_labelSize.cx = bm.bmWidth; 
-		this->m_labelSize.cy = bm.bmHeight; 
+		::SelectObject(hdcMem, this->m_hbmLabel); 
+	}
+	else
+	{
+		// load bitmap
+		BITMAP bm; 
+
+		::SelectObject(hdcMem, this->m_hbmLabel); 
+		::GetObject(this->m_hbmLabel, sizeof(bm), &bm); 
+
+		// recalculate the size
+		bSizeChanged = ((this->m_labelSize.cx != bm.bmWidth) || (this->m_labelSize.cy != bm.bmHeight)); 
+		if (bSizeChanged)
+		{
+			this->m_labelSize.cx = bm.bmWidth; 
+			this->m_labelSize.cy = bm.bmHeight; 
+		}
+		BitBlt(hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, bm.bmWidth, bm.bmHeight, PATINVERT); 
+		this->m_bLabelBMReady = TRUE; 
 	}
 
+	return bSizeChanged; 
+}
+
+void VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText)
+{
+	this->DrawLabel(hdc, hdcMem, pt, szText, this->m_textColor); 
+}
+
+void VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText, COLORREF color)
+{
 	// calculate draw point
 	int px = pt.x; 
 	int py = pt.y; 
@@ -192,8 +208,7 @@ BOOL VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __
 	int dy = this->m_labelSize.cy >> 1; 
 
 	// draw bitmap
-	BitBlt(hdc, px - dx, py - dy, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCAND); 
-	::SelectObject(hdcMem, hbmOld); 
+	BitBlt(hdc, px - dx, py - dy, this->m_labelSize.cx, this->m_labelSize.cy, hdcMem, 0, 0, SRCINVERT); 
 
 	// write text
 	HFONT hFont = (HFONT) ::GetStockObject(ANSI_FIXED_FONT); 
@@ -204,8 +219,6 @@ BOOL VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __
 	::DrawText(hdc, szText, (int) _tcslen(szText), &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE); 
 	::SelectObject(hdc, hFontOld); 
 	::SetTextColor(hdc, oldColor); 
-
-	return bSizeChanged; 
 }
 
 void VisualRulerData::DrawDistanceLine(__in HDC hdc, __in HDC hdcMem)
@@ -224,8 +237,8 @@ void VisualRulerData::DrawDistanceLine(__in HDC hdc, __in HDC hdcMem)
 	midPt.y = (this->startPt.y + this->endPt.y) >> 1; 
 
 	TCHAR* szText = NULL; 
-	szText = new TCHAR[128]; 
-	this->GetDistance(&szText, 128); 
+	szText = new TCHAR[64]; 
+	this->GetDistance(&szText, 64); 
 
 	POINT pt = {midPt.x + m_lineLabelOffset.cx, midPt.y + m_lineLabelOffset.cy}; 
 	this->DrawLabel(hdc, hdcMem, pt, szText, this->m_disTextColor); 
@@ -241,24 +254,26 @@ void VisualRulerData::Draw()
 	//  Draw the ruler
 	// ----------------------------------------------
 
-	HDC hdcMem = ::CreateCompatibleDC(hdc); 
+	HDC hdcMem4Point = ::CreateCompatibleDC(hdc); 
+	HDC hdcMem4Label = ::CreateCompatibleDC(hdc); 
+
 	TCHAR* szText = NULL; 
 	szText = new TCHAR[128]; 
 
-	BOOL isSizeChanged = FALSE; 
+	BOOL isSizeChanged = this->PrepareLabelMemDC(hdcMem4Label); 
 
-	this->DrawDistanceLine(hdc, hdcMem); 
+	this->DrawDistanceLine(hdc, hdcMem4Label); 
 
 	BOOL bStartFocus = this->m_focusPointFlag & FPF_START; 
 	BOOL bEndFocus = this->m_focusPointFlag & FPF_END; 
 
-	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->startPt, bStartFocus && !bEndFocus) || isSizeChanged; 
+	isSizeChanged = this->DrawPoint(hdc, hdcMem4Point, this->startPt, bStartFocus && !bEndFocus) || isSizeChanged; 
 	this->GetStartPoint(&szText, 128); 
-	isSizeChanged = this->DrawLabel(hdc, hdcMem, this->GetPointLabelPos(this->startPt, this->GetStartOrientation()), szText) || isSizeChanged; 
+	this->DrawLabel(hdc, hdcMem4Label, this->GetPointLabelPos(this->startPt, this->GetStartOrientation()), szText); 
 
-	isSizeChanged = this->DrawPoint(hdc, hdcMem, this->endPt, bEndFocus && !bStartFocus) || isSizeChanged; 
+	isSizeChanged = this->DrawPoint(hdc, hdcMem4Point, this->endPt, bEndFocus && !bStartFocus) || isSizeChanged; 
 	this->GetEndPoint(&szText, 128); 
-	isSizeChanged = this->DrawLabel(hdc, hdcMem, this->GetPointLabelPos(this->endPt, this->GetEndOrientation()), szText) || isSizeChanged; 
+	this->DrawLabel(hdc, hdcMem4Label, this->GetPointLabelPos(this->endPt, this->GetEndOrientation()), szText); 
 
 	if (isSizeChanged)
 	{
@@ -266,7 +281,8 @@ void VisualRulerData::Draw()
 	}
 
 	delete[] szText; 
-	::DeleteDC(hdcMem); 
+	::DeleteDC(hdcMem4Label); 
+	::DeleteDC(hdcMem4Point); 
 	// ----------------------------------------------
 	::EndPaint(this->m_hWnd, &ps); 
 }
@@ -335,6 +351,10 @@ void VisualRulerData::AdjustLineLabelOrientation()
 	int dx = endPt.x - startPt.x; 
 	int dy = endPt.y - startPt.y; 
 	double distance = this->GetDistance(); 
+	if (distance == 0)
+	{
+		distance = 0.001;
+	}
 	int ndx = (int) (this->m_lineLableDist * dy / distance); 
 	int ndy = (int) (-this->m_lineLableDist * dx / distance); 
 	ndy = (ndy >> 2) + (ndy >> 3); 
