@@ -40,6 +40,7 @@ protected:
 	HBITMAP		m_hbmPoint; 
 	HBITMAP		m_hbmFocusPoint;
 	HBITMAP		m_hbmLabel;
+	BOOL		m_bLabelBMReady; 
 
 public:
 	COLORREF	m_disLineColor; 
@@ -54,12 +55,13 @@ public:
 	BOOL		m_showCross; 
 
 protected:
+	BOOL PrepareLabelMemDC(__inout HDC hdcMem); 
 	BOOL DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in BOOL bFocus); 
 	POINT GetPointLabelPos(__in POINT pt, __in int orientation); 
 	RECT GetPointLabelRect(__in POINT pt, __in int orientation); 
 
-	BOOL DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText);
-	BOOL DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText, __in COLORREF color);
+	void DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText);
+	void DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText, __in COLORREF color);
 	void DrawDistanceLine(__in HDC hdc, __in HDC hdcMem);
 
 	void CalculateCapture(); 

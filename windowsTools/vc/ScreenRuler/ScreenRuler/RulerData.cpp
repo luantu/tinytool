@@ -28,7 +28,7 @@ void RulerData::GetDistance(TCHAR **pszDistance, size_t len)
 {
 	int dx = abs(this->endPt.x - this->startPt.x); 
 	int dy = abs(this->endPt.y - this->startPt.y); 
-	_stprintf_s(*pszDistance, len, this->szDistanceFormat, this->GetDistance(), dx, dy); 
+	_stprintf_s(*pszDistance, len, this->szDistanceFormat, sqrt(0. + dx * dx + dy * dy), dx, dy); 
 }
 
 void RulerData::GetDistance(double distance, TCHAR **pszDistance, size_t len)
