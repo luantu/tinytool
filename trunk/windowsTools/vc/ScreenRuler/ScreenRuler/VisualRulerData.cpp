@@ -8,10 +8,12 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 
 	this->m_focusPointFlag = 3; 
 	this->m_showCross = FALSE; 
+	this->m_bLocked = FALSE; 
 
 	this->m_pointColor = RGB(0, 0, 0); 
 	this->m_focusPointColor = RGB(255, 0, 0); 
 	this->m_disLineColor = RGB(100, 100, 255); 
+	this->m_lockedLineColor = RGB(192, 192, 192); 
 	this->m_textColor = RGB(254, 254, 254); 
 	this->m_disTextColor = RGB(255, 255, 128); 
 	this->m_crossLineColor = RGB(255, 128, 0); 
@@ -93,7 +95,7 @@ BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __
 	if (this->m_showCross)
 	{	// draw it
 		// draw horizontal line
-		COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_crossLineColor); 
+		COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_bLocked ? this->m_lockedLineColor: this->m_crossLineColor); 
 		HGDIOBJ hOldPen = ::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
 		int dx = this->m_pointSize.cx >> 1;
 		int dy = this->m_pointSize.cy >> 1; 
@@ -224,7 +226,7 @@ void VisualRulerData::DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __
 void VisualRulerData::DrawDistanceLine(__in HDC hdc, __in HDC hdcMem)
 {
 	// draw the line
-	COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_disLineColor); 
+	COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_bLocked ? this->m_lockedLineColor : this->m_disLineColor); 
 	HGDIOBJ hOldPen = ::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
 	MoveToEx(hdc, this->startPt.x, this->startPt.y, NULL); 
 	LineTo(hdc, this->endPt.x, this->endPt.y); 
