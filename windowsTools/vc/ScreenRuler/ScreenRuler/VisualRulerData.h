@@ -44,6 +44,7 @@ protected:
 
 public:
 	COLORREF	m_disLineColor; 
+	COLORREF	m_lockedLineColor; 
 	COLORREF	m_pointColor; 
 	COLORREF	m_focusPointColor;
 	COLORREF	m_textColor; 
@@ -53,6 +54,7 @@ public:
 	SIZE		m_boundary; 
 	int			m_focusPointFlag; 
 	BOOL		m_showCross; 
+	BOOL		m_bLocked; 
 
 protected:
 	BOOL PrepareLabelMemDC(__inout HDC hdcMem); 

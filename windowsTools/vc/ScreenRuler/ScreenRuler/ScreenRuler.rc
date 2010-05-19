@@ -40,9 +40,11 @@ IDB_FOCUS_POINT         BITMAP                  "focus_point.bmp"
 IDC_SCREENRULER ACCELERATORS 
 BEGIN
     "C",            IDM_COPY,               VIRTKEY, CONTROL, NOINVERT
-    "X",            IDM_CROSS,              VIRTKEY, NOINVERT
     VK_ADD,         IDM_CROSS,              VIRTKEY, NOINVERT
     VK_OEM_PLUS,    IDM_CROSS,              VIRTKEY, NOINVERT
+    "X",            IDM_CROSS,              VIRTKEY, NOINVERT
+    "L",            IDM_LOCK,               VIRTKEY, NOINVERT
+    VK_PAUSE,       IDM_LOCK,               VIRTKEY, NOINVERT
 END
 
 
@@ -54,7 +56,7 @@ END
 STRINGTABLE 
 BEGIN
     IDS_APP_TITLE           "ScreenRuler"
-    IDS_COPY                "&Copy : "
+    IDS_COPY                "&Copy : %s\tCtrl-C"
     IDS_ABOUT               "Screen Ruler is a FREE software developed by Programus (programus@gmail.com)\nfor Lynn who was learning 3D CG and needs to measure pictures in screen."
     IDS_ABOUT_TITLE         "About Screen Ruler"
     IDC_SCREENRULER         "SCREENRULER"
@@ -83,7 +85,8 @@ BEGIN
     POPUP "Popup"
     BEGIN
         MENUITEM "&Copy",                       IDM_COPY
-        MENUITEM "C&ross",                      IDM_CROSS
+        MENUITEM "C&ross\tX/+",                 IDM_CROSS
+        MENUITEM "&Lock\tL/[Pause]",            32781
         MENUITEM SEPARATOR
         MENUITEM "&About",                      IDM_ABOUT
         MENUITEM SEPARATOR
@@ -135,8 +138,8 @@ IDI_SCREENRULER         ICON                    "Ruler.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,1,0,1
- PRODUCTVERSION 0,1,0,1
+ FILEVERSION 0,1,0,2
+ PRODUCTVERSION 0,1,0,2
  FILEFLAGSMASK 0x37L
 #ifdef _DEBUG
  FILEFLAGS 0x21L
@@ -153,12 +156,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "This software is developed special for Lynn. Wish her happy!"
             VALUE "FileDescription", "Screen Ruler"
-            VALUE "FileVersion", "0, 1, 0, 1"
+            VALUE "FileVersion", "0, 1, 0, 2"
             VALUE "InternalName", "ScrRuler"
             VALUE "LegalCopyright", "FREE software from Programus"
             VALUE "OriginalFilename", "ScreenRuler.exe"
             VALUE "ProductName", "Screen Ruler"
-            VALUE "ProductVersion", "0, 1, 0, 1"
+            VALUE "ProductVersion", "0, 1, 0, 2"
             VALUE "SpecialBuild", "20100519"
         END
     END

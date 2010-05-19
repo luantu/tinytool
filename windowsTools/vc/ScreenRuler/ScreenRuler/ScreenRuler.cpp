@@ -8,7 +8,7 @@
 #define MAX_LOADSTRING 100
 
 #define COLOR_TRANS			RGB(255, 255, 255)
-#define NOFOCUS_TRANS_VALUE	128
+#define NOFOCUS_TRANS_VALUE	127
 #define FOCUS_TRANS_VALUE	255
 #define MAX_COPY_LEN		128
 
@@ -21,7 +21,7 @@ TCHAR szTitle[MAX_LOADSTRING];					// タイトル バーのテキスト
 TCHAR szWindowClass[MAX_LOADSTRING];			// メイン ウィンドウ クラス名
 HBRUSH transColorBrush;							// A brush to draw main window
 VisualRulerData* vrd = NULL;					// Main data
-TCHAR* szCopy = NULL;							// To store content to copy
+TCHAR szFormat[MAX_LOADSTRING];					// To store the copy format
 
 // このコード モジュールに含まれる関数の宣言を転送します:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -44,6 +44,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	// グローバル文字列を初期化しています。
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadString(hInstance, IDC_SCREENRULER, szWindowClass, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_COPY, szFormat, MAX_LOADSTRING); 
 	transColorBrush = CreateSolidBrush(COLOR_TRANS); 
 	MyRegisterClass(hInstance);
 
@@ -144,7 +145,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    vrd->endPt.y = rect.bottom - (mx >> 1); 
    vrd->AdjustLabelOrientation(); 
    vrd->AdjustLineLabelOrientation(); 
-   szCopy = new TCHAR[MAX_COPY_LEN]; 
    MinimizeMemory(); 
    // End own init
 
@@ -205,36 +205,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if (::OpenClipboard(hWnd))
 					{
-						switch(vrd->m_focusPointFlag)
+						TCHAR* szCopy = NULL; 
+						szCopy = new TCHAR[MAX_COPY_LEN]; 
+						if (szCopy != NULL)
 						{
-						case FPF_END:
-							vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
-							break; 
-						case FPF_START:
-							vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
-							break; 
-						default:
-							vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
-							break; 
-						}
-						EmptyClipboard(); 
-						size_t len = _tcslen(szCopy); 
-						HGLOBAL hglbCopy = ::GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(TCHAR));
-						if (hglbCopy != NULL)
-						{
-							LPTSTR lptstrCopy = (LPTSTR) GlobalLock(hglbCopy); 
-							memcpy(lptstrCopy, szCopy, len * sizeof(TCHAR)); 
-							lptstrCopy[len] = '\0'; 
-							GlobalUnlock(hglbCopy); 
+							switch(vrd->m_focusPointFlag)
+							{
+							case FPF_END:
+								vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
+								break; 
+							case FPF_START:
+								vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
+								break; 
+							default:
+								vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
+								break; 
+							}
+							EmptyClipboard(); 
+							size_t len = _tcslen(szCopy); 
+							HGLOBAL hglbCopy = ::GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(TCHAR));
+							if (hglbCopy != NULL)
+							{
+								LPTSTR lptstrCopy = (LPTSTR) GlobalLock(hglbCopy); 
+								memcpy(lptstrCopy, szCopy, len * sizeof(TCHAR)); 
+								lptstrCopy[len] = '\0'; 
+								GlobalUnlock(hglbCopy); 
 
-							::SetClipboardData(CF_UNICODETEXT, hglbCopy); 
+								::SetClipboardData(CF_UNICODETEXT, hglbCopy); 
+							}
+							CloseClipboard(); 
+							delete[] szCopy; 
 						}
-						CloseClipboard(); 
 					}
 				}
 				break;
 			case IDM_CROSS:
 				vrd->m_showCross = !vrd->m_showCross; 
+				bNeedRedraw = TRUE; 
+				break; 
+			case IDM_LOCK:
+				vrd->m_bLocked = !vrd->m_bLocked; 
 				bNeedRedraw = TRUE; 
 				break; 
 			case IDM_ABOUT:
@@ -294,7 +304,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_MOUSEMOVE:
 		{
-			if (wParam & MK_LBUTTON)
+			if ((wParam & MK_LBUTTON) && !(::GetKeyState(VK_SCROLL) & 0x01) && !vrd->m_bLocked)
 			{
 				POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
 				int dx = mousePt.x - oldMousePt.x; 
@@ -346,38 +356,49 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				HMENU hPopupMenu = ::GetSubMenu(hMenu, 0); 
 
-				switch(vrd->m_focusPointFlag)
+				TCHAR* szCopy = NULL; 
+				szCopy = new TCHAR[MAX_COPY_LEN]; 
+				if (szCopy != NULL)
 				{
-				case FPF_END:
-					vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
-					break; 
-				case FPF_START:
-					vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
-					break; 
-				default:
-					vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
-					break; 
-				}
+					TCHAR* szText = NULL; 
+					int l = MAX_COPY_LEN + MAX_LOADSTRING; 
+					szText = new TCHAR[l]; 
+					if (szText != NULL)
+					{
+						switch(vrd->m_focusPointFlag)
+						{
+						case FPF_END:
+							vrd->GetEndPoint(&szCopy, MAX_COPY_LEN); 
+							break; 
+						case FPF_START:
+							vrd->GetStartPoint(&szCopy, MAX_COPY_LEN); 
+							break; 
+						default:
+							vrd->GetDistance(&szCopy, MAX_COPY_LEN); 
+							break; 
+						}
 
-				int l = MAX_COPY_LEN + 16; 
-				TCHAR* szText = new TCHAR[l]; 
-				LoadString(hInst, IDS_COPY, szText, l); 
-				_tcscat_s(szText, l, szCopy); 
+						_stprintf_s(szText, l, szFormat, szCopy); 
+
+						MENUITEMINFO* pmiiCopy = new MENUITEMINFO; 
+						ZeroMemory(pmiiCopy, sizeof(*pmiiCopy)); 
+						pmiiCopy->cbSize = sizeof(*pmiiCopy); 
+						pmiiCopy->fMask = MIIM_STRING; 
+						pmiiCopy->dwTypeData = szText; 
+						pmiiCopy->cch = (UINT) _tcslen(szText); 
+
+						if (::SetMenuItemInfo(hPopupMenu, IDM_COPY, FALSE, pmiiCopy))
+						{
+							DrawMenuBar(hWnd); 
+						}
+						delete[] szText; 
+					}
+					delete[] szCopy; 
+				}
 				::CheckMenuItem(hMenu, IDM_CROSS, MF_BYCOMMAND | (vrd->m_showCross ? MF_CHECKED : MF_UNCHECKED)); 
-
-				MENUITEMINFO* pmiiCopy = new MENUITEMINFO; 
-				ZeroMemory(pmiiCopy, sizeof(*pmiiCopy)); 
-				pmiiCopy->cbSize = sizeof(*pmiiCopy); 
-				pmiiCopy->fMask = MIIM_STRING; 
-				pmiiCopy->dwTypeData = szText; 
-				pmiiCopy->cch = (UINT) _tcslen(szText); 
-				if (::SetMenuItemInfo(hPopupMenu, IDM_COPY, FALSE, pmiiCopy))
-				{
-					DrawMenuBar(hWnd); 
-				}
+				::CheckMenuItem(hMenu, IDM_LOCK, MF_BYCOMMAND | (vrd->m_bLocked ? MF_CHECKED : MF_UNCHECKED)); 
 				::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL); 
 				DestroyMenu(hMenu); 
-				delete[] szText; 
 			}
 		}
 		break; 
@@ -400,14 +421,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				vrd->m_focusPointFlag = FPF_BOTH;
 				break; 
 			case '1':
-			case 'Q':
 			case VK_NUMPAD1:
 				// 1 - Select start point as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_START; 
 				vrd->m_focusPointFlag = FPF_START;
 				break; 
 			case '2':
-			case 'E':
 			case VK_NUMPAD2:
 				// 2 - Select end point as moving focus point
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_END; 
@@ -420,6 +439,112 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (vrd->m_focusPointFlag == FPF_BOTH || vrd->m_focusPointFlag == FPF_NONE)
 				{
 					vrd->m_focusPointFlag = FPF_START; 
+				}
+				break; 
+			case 'Q':
+			case VK_OEM_COMMA:	// <, key for US keyboard
+			case VK_OEM_4:		// {[ key for US keyboard
+			case VK_DELETE:
+				{
+					int oldFlag = vrd->m_focusPointFlag; 
+					if (vrd->startPt.x < vrd->endPt.x)
+					{
+						vrd->m_focusPointFlag = FPF_START; 
+					} 
+					else if (vrd->startPt.x > vrd->endPt.x)
+					{
+						vrd->m_focusPointFlag = FPF_END; 
+					}
+					else
+					{
+						if (vrd->startPt.y < vrd->endPt.y)
+						{
+							vrd->m_focusPointFlag = FPF_START; 
+						}
+						else
+						{
+							vrd->m_focusPointFlag = FPF_END; 
+						}
+					}
+					bNeedRedraw = (oldFlag != vrd->m_focusPointFlag); 
+				}
+				break; 
+			case 'E':
+			case VK_OEM_PERIOD:	// >. key for US keyboard
+			case VK_OEM_6:		// }] key for US keyboard
+			case VK_NEXT:		// page down key
+				{
+					int oldFlag = vrd->m_focusPointFlag; 
+					if (vrd->startPt.x < vrd->endPt.x)
+					{
+						vrd->m_focusPointFlag = FPF_END; 
+					} 
+					else if (vrd->startPt.x > vrd->endPt.x)
+					{
+						vrd->m_focusPointFlag = FPF_START; 
+					}
+					else
+					{
+						if (vrd->startPt.y > vrd->endPt.y)
+						{
+							vrd->m_focusPointFlag = FPF_START; 
+						}
+						else
+						{
+							vrd->m_focusPointFlag = FPF_END; 
+						}
+					}
+					bNeedRedraw = (oldFlag != vrd->m_focusPointFlag); 
+				}
+				break; 
+			case VK_HOME:
+				{
+					int oldFlag = vrd->m_focusPointFlag; 
+					if (vrd->startPt.y < vrd->endPt.y)
+					{
+						vrd->m_focusPointFlag = FPF_START; 
+					} 
+					else if (vrd->startPt.y > vrd->endPt.y)
+					{
+						vrd->m_focusPointFlag = FPF_END; 
+					}
+					else
+					{
+						if (vrd->startPt.x < vrd->endPt.x)
+						{
+							vrd->m_focusPointFlag = FPF_START; 
+						}
+						else
+						{
+							vrd->m_focusPointFlag = FPF_END; 
+						}
+					}
+					bNeedRedraw = (oldFlag != vrd->m_focusPointFlag); 
+				}
+				break; 
+			case VK_END:
+				{
+					int oldFlag = vrd->m_focusPointFlag; 
+					if (vrd->startPt.y < vrd->endPt.y)
+					{
+						vrd->m_focusPointFlag = FPF_END; 
+					} 
+					else if (vrd->startPt.y > vrd->endPt.y)
+					{
+						vrd->m_focusPointFlag = FPF_START; 
+					}
+					else
+					{
+						if (vrd->startPt.x > vrd->endPt.x)
+						{
+							vrd->m_focusPointFlag = FPF_START; 
+						}
+						else
+						{
+							vrd->m_focusPointFlag = FPF_END; 
+						}
+					}
+					bNeedRedraw = (oldFlag != vrd->m_focusPointFlag); 
 				}
 				break; 
 			case 'W':
@@ -501,7 +626,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_TIMER:
 		{
 			LONG tickCount = ::GetTickCount(); 
-			if (tickCount - lastTickCount >= KDT_DELAY)
+			if (tickCount - lastTickCount >= KDT_DELAY && !(::GetKeyState(VK_SCROLL) & 0x01) && !vrd->m_bLocked)
 			{
 				switch(wParam)
 				{
@@ -532,7 +657,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 							dx <<= 3; 
 							dy <<= 3;
 						}
-						if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000))
+						if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000) || (::GetAsyncKeyState(VK_SPACE) & 0x8000))
 						{
 							dx <<= 6; 
 							dy <<= 6;
@@ -620,7 +745,6 @@ void EndInstance()
 {
 	PostQuitMessage(0); 
 	DeleteObject(transColorBrush); 
-	delete[] szCopy; 
 }
 
 void MinimizeMemory()
