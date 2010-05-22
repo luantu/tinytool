@@ -582,7 +582,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case VK_UP:
 			case VK_DOWN:
 				{
-					if (pressedKeys == 0) 
+					if ((pressedKeys & 0x0f) == 0) 
 					{
 						::SetTimer(hWnd, IDT_KEY_DETECT, KDT_DELAY, NULL); 
 						::PostMessage(hWnd, WM_TIMER, IDT_KEY_DETECT, 0); 
