@@ -50,11 +50,16 @@ public:
 	COLORREF	m_textColor; 
 	COLORREF	m_disTextColor; 
 	COLORREF	m_crossLineColor;
+	COLORREF	m_pointInMagnifierColor;
+	COLORREF	m_pointInMagnifierAltColor; 
+	COLORREF	m_magnifierBorderColor; 
 
 	SIZE		m_boundary; 
 	int			m_focusPointFlag; 
 	BOOL		m_showCross; 
 	BOOL		m_bLocked; 
+	BOOL		m_bMagnifier; 
+	BOOL		m_bMoving;
 
 protected:
 	BOOL PrepareLabelMemDC(__inout HDC hdcMem); 
@@ -65,6 +70,9 @@ protected:
 	void DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText);
 	void DrawLabel(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __in TCHAR* szText, __in COLORREF color);
 	void DrawDistanceLine(__in HDC hdc, __in HDC hdcMem);
+
+	POINT GetMagnifierPos(__in POINT* pLabelPt, __in int orientation); 
+	void DrawMagnifier(__in HDC hdc, __in HDC hdcMem, __in POINT* pLabelPt, __in POINT* ppt); 
 
 	void CalculateCapture(); 
 

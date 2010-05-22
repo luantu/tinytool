@@ -168,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static POINT oldStartPt; 
 	static POINT oldEndPt; 
 
-	static int pressedArrowKeys = 0; // Flag Bits: |     |     |     |Mouse|Left|Up|Right|Down|
+	static int pressedKeys = 0; // Flag Bits: |     |     |M(Magnifier)|Mouse|Left|Up|Right|Down|
 	static int oldFocusPointFlag = FPF_BOTH; 
 	static LONG lastTickCount = 0; 
 
@@ -247,6 +247,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				vrd->m_bLocked = !vrd->m_bLocked; 
 				bNeedRedraw = TRUE; 
 				break; 
+			case IDM_MAGNIFIER:
+				vrd->m_bMagnifier = !vrd->m_bMagnifier; 
+				break; 
 			case IDM_ABOUT:
 				{
 					TCHAR* szAbout = new TCHAR[256]; 
@@ -266,7 +269,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			RECT rect; 
 			::GetWindowRect(hWnd, &rect); 
 			::ClipCursor(&rect); 
-			pressedArrowKeys |= (1 << 4); 
+			pressedKeys |= (1 << 4); 
+			vrd->m_bMoving = TRUE; 
+
 			POINT mousePt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}; 
 			oldMousePt = mousePt; 
 			oldStartPt = vrd->startPt; 
@@ -286,13 +291,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				bNeedRedraw = vrd->m_focusPointFlag != FPF_BOTH; 
 				vrd->m_focusPointFlag = FPF_BOTH;
 			}
+			if (vrd->m_bMagnifier)
+			{
+				bNeedRedraw = TRUE; 
+			}
 		}
 		break; 
 	case WM_LBUTTONUP:
 		{
-			pressedArrowKeys &= ~(1 << 4); 
-			if (pressedArrowKeys == 0)
+			pressedKeys &= ~(1 << 4); 
+			if (pressedKeys == 0)
 			{
+				vrd->m_bMoving = FALSE; 
 				vrd->AdjustLabelOrientation(); 
 				vrd->AdjustLineLabelOrientation(); 
 			}
@@ -397,6 +407,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				::CheckMenuItem(hMenu, IDM_CROSS, MF_BYCOMMAND | (vrd->m_showCross ? MF_CHECKED : MF_UNCHECKED)); 
 				::CheckMenuItem(hMenu, IDM_LOCK, MF_BYCOMMAND | (vrd->m_bLocked ? MF_CHECKED : MF_UNCHECKED)); 
+				::CheckMenuItem(hMenu, IDM_MAGNIFIER, MF_BYCOMMAND | (vrd->m_bMagnifier ? MF_CHECKED : MF_UNCHECKED)); 
 				::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL); 
 				DestroyMenu(hMenu); 
 			}
@@ -571,12 +582,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case VK_UP:
 			case VK_DOWN:
 				{
-					if (pressedArrowKeys == 0) 
+					if (pressedKeys == 0) 
 					{
 						::SetTimer(hWnd, IDT_KEY_DETECT, KDT_DELAY, NULL); 
 						::PostMessage(hWnd, WM_TIMER, IDT_KEY_DETECT, 0); 
 					}
-					pressedArrowKeys |= (1 << (wParam - VK_LEFT)); 
+					pressedKeys |= (1 << (wParam - VK_LEFT)); 
+					vrd->m_bMoving = TRUE; 
+				}
+				break; 
+			case 'M':
+				if (!(pressedKeys & (1 << 5)))
+				{
+					vrd->m_bMoving = TRUE; 
+					pressedKeys |= (1 << 5); 
+					bNeedRedraw = TRUE; 
 				}
 				break; 
 			}
@@ -586,6 +606,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			switch(wParam)
 			{
+			case 'M':
+				pressedKeys &= ~(1 << 5); 
 			case 'W':
 			case 'S':
 			case 'A':
@@ -610,10 +632,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case VK_UP:
 			case VK_DOWN:
 				{
-					pressedArrowKeys &= ~(1 << (wParam - VK_LEFT)); 
-					if (pressedArrowKeys == 0)
+					pressedKeys &= ~(1 << (wParam - VK_LEFT)); 
+					if (pressedKeys == 0)
 					{
 						::KillTimer(hWnd, IDT_KEY_DETECT); 
+						vrd->m_bMoving = FALSE; 
 						vrd->AdjustLabelOrientation(); 
 						vrd->AdjustLineLabelOrientation(); 
 						bNeedRedraw = TRUE; 
@@ -697,7 +720,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_KILLFOCUS:
 		if (vrd != NULL)
 		{
-			pressedArrowKeys = 0; 
+			pressedKeys = 0; 
 			oldFocusPointFlag = vrd->m_focusPointFlag; 
 			vrd->m_focusPointFlag = FPF_NONE; 
 			bNeedRedraw = oldFocusPointFlag != FPF_BOTH; 
@@ -714,7 +737,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	if (bNeedRedraw)
 	{
-		::RedrawWindow(hWnd, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_UPDATENOW); 
+		::RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
 	}
 	if (bNeedMinimizeMemory || bNeedRedraw)
 	{
