@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "VisualRulerData.h"
 
+#define BG_WHITE RGB(0xfe, 0xfe, 0xfe)
+
 VisualRulerData::VisualRulerData(__in HWND hWnd)
 {
 	this->m_hWnd = hWnd; 
@@ -9,8 +11,13 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 	this->m_focusPointFlag = 3; 
 	this->m_showCross = FALSE; 
 	this->m_bLocked = FALSE; 
+	this->m_bMagnifier = TRUE; 
+	this->m_bMoving = FALSE; 
 
-	this->m_pointColor = RGB(0, 0, 0); 
+	this->m_pointColor = RGB(127, 127, 127); 
+	this->m_pointInMagnifierColor = RGB(0xff, 0x00, 0x00); 
+	this->m_pointInMagnifierAltColor = RGB(0xfe, 0xfe, 0xfe); 
+	this->m_magnifierBorderColor = RGB(0, 0, 0); 
 	this->m_focusPointColor = RGB(255, 0, 0); 
 	this->m_disLineColor = RGB(100, 100, 255); 
 	this->m_lockedLineColor = RGB(192, 192, 192); 
@@ -42,6 +49,9 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 
 VisualRulerData::~VisualRulerData(void)
 {
+	::DeleteObject(m_hbmFocusPoint); 
+	::DeleteObject(m_hbmLabel); 
+	::DeleteObject(m_hbmPoint); 
 }
 
 int VisualRulerData::GetStartOrientation()
@@ -118,7 +128,7 @@ BOOL VisualRulerData::DrawPoint(__in HDC hdc, __in HDC hdcMem, __in POINT pt, __
 	::GetObject(hbm, sizeof(bm), &bm); 
 
 	// recalculate the size
-	BOOL bSizeChanged = ((this->m_pointSize.cx == bm.bmWidth) || (this->m_pointSize.cy == bm.bmHeight)); 
+	BOOL bSizeChanged = ((this->m_pointSize.cx != bm.bmWidth) || (this->m_pointSize.cy != bm.bmHeight)); 
 	if (bSizeChanged)
 	{
 		this->m_pointSize.cx = bm.bmWidth; 
@@ -165,6 +175,51 @@ RECT VisualRulerData::GetPointLabelRect(__in POINT pt, __in int orientation)
 	int h = m_labelSize.cy >> 1;
 	RECT rect = {pt.x - w, pt.y - h, pt.x + w, pt.y + h}; 
 	return rect; 
+}
+
+POINT VisualRulerData::GetMagnifierPos(__in POINT* pLabelPt, __in int orientation)
+{
+	POINT magnifierPt; 
+	magnifierPt.x = pLabelPt->x; 
+	int dy = this->m_labelSize.cy + 5 + (this->m_pointSize.cy << 2); 
+	dy = (orientation & LOM_TOPBOTTOM ? dy : -dy); 
+	magnifierPt.y = pLabelPt->y + dy; 
+	if (magnifierPt.y < 0 || magnifierPt.y > this->m_boundary.cy)
+	{
+		magnifierPt.y = pLabelPt->y - dy; 
+	}
+	return magnifierPt; 
+}
+
+void VisualRulerData::DrawMagnifier(__in HDC hdc, __in HDC hdcScr, __in POINT* pCenterPt, __in POINT* ppt)
+{
+	int cx = this->m_pointSize.cx << 2; 
+	int cy = this->m_pointSize.cy << 2; 
+	COLORREF oldPenColor = ::SetDCPenColor(hdc, this->m_magnifierBorderColor); 
+	HGDIOBJ oldPen = ::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
+	COLORREF oldBrushColor = ::SetDCBrushColor(hdc, BG_WHITE); 
+	HGDIOBJ oldBrush = ::SelectObject(hdc, ::GetStockObject(DC_BRUSH)); 
+
+	// Draw a background
+	::Rectangle(hdc, pCenterPt->x - cx, pCenterPt->y - cy, pCenterPt->x + cx, pCenterPt->y + cy); 
+
+	// Draw background in big size
+	::StretchBlt(hdc, pCenterPt->x - cx, pCenterPt->y - cy, cx << 1, cy << 1, 
+		hdcScr, ppt->x - (this->m_pointSize.cx >> 1), ppt->y - (this->m_pointSize.cy >> 1), this->m_pointSize.cx, this->m_pointSize.cy, SRCAND); 
+
+	// Draw point in big size
+	::SelectObject(hdc, GetStockBrush(NULL_BRUSH)); 
+	::SetDCPenColor(hdc, this->m_pointInMagnifierColor); 
+	::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
+	::Rectangle(hdc, pCenterPt->x - 4, pCenterPt->y - 4, pCenterPt->x + 4, pCenterPt->y + 4); 
+	::SetDCPenColor(hdc, this->m_pointInMagnifierAltColor); 
+	::SelectObject(hdc, ::GetStockObject(DC_PEN)); 
+	::Rectangle(hdc, pCenterPt->x - 5, pCenterPt->y - 5, pCenterPt->x + 5, pCenterPt->y + 5); 
+
+	::SetDCPenColor(hdc, oldPenColor); 
+	::SelectObject(hdc, oldPen); 
+	::SetDCBrushColor(hdc, oldBrushColor); 
+	::SelectObject(hdc, oldBrush); 
 }
 
 BOOL VisualRulerData::PrepareLabelMemDC(__inout HDC hdcMem)
@@ -251,16 +306,24 @@ void VisualRulerData::DrawDistanceLine(__in HDC hdc, __in HDC hdcMem)
 void VisualRulerData::Draw()
 {
 	PAINTSTRUCT ps; 
-	HDC hdc = ::BeginPaint(this->m_hWnd, &ps); 
+	TCHAR* szText = NULL; 
+	szText = new TCHAR[128]; 
+
+	// prepare memory buffer. 
+	HDC hdcWin = ::GetDC(this->m_hWnd); 
+	HDC hdc = ::CreateCompatibleDC(hdcWin); 
+	HBITMAP hbm = ::CreateCompatibleBitmap(hdcWin, this->m_boundary.cx, this->m_boundary.cy); 
+	::ReleaseDC(this->m_hWnd, hdcWin); 
+
+	::SelectObject(hdc, hbm); 
+	RECT screenRect = {0, 0, this->m_boundary.cx, this->m_boundary.cy}; 
+	::FillRect(hdc, &screenRect, WHITE_BRUSH); 
 	// ----------------------------------------------
 	//  Draw the ruler
 	// ----------------------------------------------
 
 	HDC hdcMem4Point = ::CreateCompatibleDC(hdc); 
 	HDC hdcMem4Label = ::CreateCompatibleDC(hdc); 
-
-	TCHAR* szText = NULL; 
-	szText = new TCHAR[128]; 
 
 	BOOL isSizeChanged = this->PrepareLabelMemDC(hdcMem4Label); 
 
@@ -269,24 +332,48 @@ void VisualRulerData::Draw()
 	BOOL bStartFocus = this->m_focusPointFlag & FPF_START; 
 	BOOL bEndFocus = this->m_focusPointFlag & FPF_END; 
 
+	POINT startLabelPt = this->GetPointLabelPos(this->startPt, this->GetStartOrientation()); 
+	POINT endLabelPt = this->GetPointLabelPos(this->endPt, this->GetEndOrientation()); 
+
 	isSizeChanged = this->DrawPoint(hdc, hdcMem4Point, this->startPt, bStartFocus && !bEndFocus) || isSizeChanged; 
 	this->GetStartPoint(&szText, 128); 
-	this->DrawLabel(hdc, hdcMem4Label, this->GetPointLabelPos(this->startPt, this->GetStartOrientation()), szText); 
+	this->DrawLabel(hdc, hdcMem4Label, startLabelPt, szText); 
 
 	isSizeChanged = this->DrawPoint(hdc, hdcMem4Point, this->endPt, bEndFocus && !bStartFocus) || isSizeChanged; 
 	this->GetEndPoint(&szText, 128); 
-	this->DrawLabel(hdc, hdcMem4Label, this->GetPointLabelPos(this->endPt, this->GetEndOrientation()), szText); 
+	this->DrawLabel(hdc, hdcMem4Label, endLabelPt, szText); 
+
+	if (this->m_bMagnifier && this->m_bMoving)
+	{
+		HDC hdcScr = ::GetDC(NULL); 
+		if (this->m_focusPointFlag & FPF_START)
+		{
+			this->DrawMagnifier(hdc, hdcScr, &this->GetMagnifierPos(&startLabelPt, this->GetStartOrientation()), &this->startPt); 
+		}
+		if (this->m_focusPointFlag & FPF_END)
+		{
+			this->DrawMagnifier(hdc, hdcScr, &this->GetMagnifierPos(&endLabelPt, this->GetEndOrientation()), &this->endPt); 
+		}
+		::ReleaseDC(NULL, hdcScr); 
+	}
 
 	if (isSizeChanged)
 	{
 		this->CalculateCapture(); 
 	}
 
-	delete[] szText; 
 	::DeleteDC(hdcMem4Label); 
 	::DeleteDC(hdcMem4Point); 
 	// ----------------------------------------------
+	// put memory buffer to the physical device. 
+	HDC hdcCanvas = ::BeginPaint(this->m_hWnd, &ps); 
+	::BitBlt(hdcCanvas, 0, 0, this->m_boundary.cx, this->m_boundary.cy, hdc, 0, 0, SRCCOPY); 
 	::EndPaint(this->m_hWnd, &ps); 
+
+	::DeleteObject(hbm); 
+	::DeleteDC(hdc); 
+
+	delete[] szText; 
 }
 
 void VisualRulerData::AdjustLabelOrientation()
