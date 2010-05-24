@@ -453,9 +453,6 @@ void VisualRulerData::AdjustLineLabelOrientation()
 	midPt.x = (this->startPt.x + this->endPt.x) >> 1; 
 	midPt.y = (this->startPt.y + this->endPt.y) >> 1; 
 
-	RECT startLabelRect = this->GetPointLabelRect(this->startPt, this->GetStartOrientation()); 
-	RECT endLabelRect = this->GetPointLabelRect(this->endPt, this->GetEndOrientation()); 
-
 	POINT pt = {midPt.x + ndx, midPt.y + ndy}; 
 	LONG left = pt.x - w; 
 	LONG top = pt.y - h; 

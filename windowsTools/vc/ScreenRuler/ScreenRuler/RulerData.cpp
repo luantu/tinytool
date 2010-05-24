@@ -7,6 +7,11 @@
 
 RulerData::RulerData(void)
 {
+	this->startPt.x = this->startPt.y = this->endPt.x = this->endPt.y = 0; 
+	this->prevStartPt = this->startPt; 
+	this->prevEndPt = this->endPt; 
+	this->prevDistance = 0.; 
+
 	this->szDistanceFormat = new TCHAR[FORMAT_LENGTH]; 
 	this->szPointFormat = new TCHAR[FORMAT_LENGTH]; 
 	_tcscpy_s(this->szDistanceFormat, FORMAT_LENGTH, DEFAULT_DISTANCE_FORMAT); 
@@ -19,23 +24,21 @@ RulerData::~RulerData(void)
 
 double RulerData::GetDistance()
 {
-	double dx = this->endPt.x - this->startPt.x; 
-	double dy = this->endPt.y - this->startPt.y; 
-	return sqrt(dx * dx + dy * dy); 
+	if (this->startPt.x != this->prevStartPt.x || this->endPt.x != this->prevEndPt.x || this->startPt.y != this->prevStartPt.y || this->endPt.y != this->prevEndPt.y)
+	{
+		this->prevDx = this->endPt.x - this->startPt.x; 
+		this->prevDy = this->endPt.y - this->startPt.y; 
+		this->prevDistance = sqrt(0. + this->prevDx * this->prevDx + this->prevDy * this->prevDy); 
+
+		this->prevStartPt = this->startPt; 
+		this->prevEndPt = this->endPt; 
+	}
+	return this->prevDistance; 
 }
 
 void RulerData::GetDistance(TCHAR **pszDistance, size_t len)
 {
-	int dx = abs(this->endPt.x - this->startPt.x); 
-	int dy = abs(this->endPt.y - this->startPt.y); 
-	_stprintf_s(*pszDistance, len, this->szDistanceFormat, sqrt(0. + dx * dx + dy * dy), dx, dy); 
-}
-
-void RulerData::GetDistance(double distance, TCHAR **pszDistance, size_t len)
-{
-	int dx = abs(this->endPt.x - this->startPt.x); 
-	int dy = abs(this->endPt.y - this->startPt.y); 
-	_stprintf_s(*pszDistance, len, this->szDistanceFormat, distance, dx, dy); 
+	_stprintf_s(*pszDistance, len, this->szDistanceFormat, this->GetDistance(), this->prevDx, this->prevDy); 
 }
 
 void RulerData::GetStartPoint(TCHAR **pszStartPoint, size_t len)
