@@ -6,13 +6,16 @@
 #include <tchar.h>
 
 #define MAX_TIME_LEN	9
+#define HELP_BK_COLOR	0x00e0ffe0
 
 // グローバル変数:
 extern HINSTANCE hInst;								// 現在のインターフェイス
 extern TCHAR szTitle[];					// タイトル バーのテキスト
 extern TCHAR szWindowClass[];			// メイン ウィンドウ クラス名
+extern HWND hHelpDlg;
 
 Countdown cd; 
+BOOL bShowHelp = TRUE;
 
 void SetTime(HWND hWnd)
 {
@@ -30,6 +33,7 @@ void SetTime(HWND hWnd)
 	{
 		cd.pauseCountdown();
 	}
+	MinimizeMemory();
 }
 
 void PauseStartCountdown(HWND hWnd)
@@ -50,6 +54,44 @@ void PauseStartCountdown(HWND hWnd)
 	}
 }
 
+void ShowHelpDialog(HWND hWnd, BOOL bShow)
+{
+	BOOL bHelpExists = IsWindow(hHelpDlg); 
+	if (!bShow && bHelpExists)
+	{
+		DestroyWindow(hHelpDlg);
+	}
+	else if (bShow && !bHelpExists)
+	{
+		hHelpDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_HELP), hWnd, (DLGPROC)HelpDlgProc);
+		MoveHelpDialog(hWnd);
+		ShowWindow(hHelpDlg, SW_SHOW);
+		SetFocus(hWnd);
+	}
+}
+
+void MoveHelpDialog(HWND hWnd)
+{
+	if (IsWindow(hHelpDlg))
+	{
+		RECT dlgRect;
+		GetClientRect(hHelpDlg, &dlgRect); 
+		RECT wndRect;
+		GetWindowRect(hWnd, &wndRect);
+		int h = GetSystemMetrics(SM_CYFULLSCREEN); 
+		if (wndRect.top + dlgRect.bottom + 1 > h)
+		{
+			dlgRect.top = wndRect.top - dlgRect.bottom - 1;
+		}
+		else
+		{
+			dlgRect.top += wndRect.bottom + 1;
+		}
+		dlgRect.left += (wndRect.right + wndRect.left - dlgRect.right) >> 1; 
+		MoveWindow(hHelpDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, FALSE);
+	}
+}
+
 //
 //  関数: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -65,6 +107,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	int wmId, wmEvent;
 	static POINT preMousePos; 
 	static RECT preWindowPos;
+	static TRACKMOUSEEVENT* ptme = NULL;
 	switch (message)
 	{
 	case WM_COMMAND:
@@ -75,19 +118,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+			MinimizeMemory();
 			break;
 		case IDM_EXIT:
-			if (cd.getState() & CDS_STARTED)
-			{
-				if (MessageBox(hWnd, _T("Countdown is ongoing. Are you sure you want to exit?"), _T("Question"), MB_YESNO | MB_ICONQUESTION) == IDYES)
-				{
-					DestroyWindow(hWnd);
-				}
-			}
-			else
-			{
-				DestroyWindow(hWnd);
-			}
+			PostMessage(hWnd, WM_CLOSE, NULL, NULL);
 			break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
@@ -99,6 +133,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 		cd.draw(hWnd); 
+		break;
+	case WM_CLOSE:
+		if (cd.getState() & CDS_STARTED)
+		{
+			if (MessageBox(hWnd, _T("Countdown is ongoing. Are you sure you want to exit?"), _T("Question"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+			{
+				DestroyWindow(hWnd);
+			}
+			else
+			{
+				MinimizeMemory();
+			}
+		}
+		else
+		{
+			DestroyWindow(hWnd);
+		}
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -128,6 +179,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_MOUSEMOVE:
 		{
+			if (!ptme)
+			{
+				ptme = new TRACKMOUSEEVENT;
+				ptme->cbSize		= sizeof(TRACKMOUSEEVENT);
+				ptme->dwFlags		= TME_LEAVE;
+				ptme->hwndTrack		= hWnd;
+				ptme->dwHoverTime	= HOVER_DEFAULT;
+				TrackMouseEvent(ptme); 
+			}
+			ShowHelpDialog(hWnd, bShowHelp);
 			if (GetCapture() == hWnd)
 			{
 				POINT p;
@@ -142,8 +203,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					preWindowPos.right - preWindowPos.left, 
 					preWindowPos.bottom - preWindowPos.top, 
 					TRUE); 
+				MoveHelpDialog(hWnd);
 			}
 		}
+		break;
+	case WM_MOUSELEAVE:
+		ShowHelpDialog(hWnd, FALSE);
+		delete ptme;
+		ptme = NULL;
+		break;
+	case WM_MBUTTONUP:
+		bShowHelp = !bShowHelp;
+		ShowHelpDialog(hWnd, bShowHelp); 
 		break;
 	case WM_KEYDOWN:
 		switch(wParam)
@@ -163,6 +234,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case VK_END:
 			SetTopMost(hWnd, FALSE);
+			break;
+		case VK_F1:
+			bShowHelp = !bShowHelp;
+			ShowHelpDialog(hWnd, bShowHelp); 
 			break;
 		}
 		break;
@@ -273,6 +348,78 @@ INT_PTR CALLBACK TimeInputProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 		}
 		break;
 
+	}
+	return (INT_PTR)FALSE;
+}
+
+INT_PTR CALLBACK HelpDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	static HBRUSH bkBrush; 
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		{
+			SetWindowLong(hDlg, GWL_EXSTYLE, WS_EX_LAYERED); 
+			SetLayeredWindowAttributes(hDlg, NULL, 215, LWA_ALPHA);
+			bkBrush = CreateSolidBrush(HELP_BK_COLOR); 
+		}
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		switch(LOWORD(wParam))
+		{
+		case IDOK:
+		case IDCANCEL:
+			DestroyWindow(hDlg);
+			return (INT_PTR)TRUE;
+			break;
+		}
+		break;
+
+	case WM_RBUTTONDOWN:
+	case WM_HELP:
+		DestroyWindow(hDlg);
+		break;
+
+	case WM_ACTIVATE:
+		SetActiveWindow(GetParent(hDlg));
+		break;
+
+	case WM_CTLCOLORSTATIC:
+		{
+			HDC hdc = (HDC) wParam;
+			SetBkColor(hdc, HELP_BK_COLOR);
+		}
+	case WM_CTLCOLORDLG:
+		return (INT_PTR)bkBrush;
+		break;
+
+	case WM_DESTROY:
+		DeleteObject(bkBrush); 
+		MinimizeMemory();
+		break;
+
+	}
+	return (INT_PTR)FALSE;
+}
+
+// バージョン情報ボックスのメッセージ ハンドラです。
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
 	}
 	return (INT_PTR)FALSE;
 }

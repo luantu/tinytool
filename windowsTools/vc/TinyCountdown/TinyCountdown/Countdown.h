@@ -20,7 +20,7 @@ public:
 
 	BOOL startCountdown(HWND hwnd);
 	BOOL pauseCountdown();
-	BOOL resetCountdown(HWND hwnd, int sec = -1);
+	BOOL resetCountdown(HWND hwnd);
 	BOOL stopCountdown(HWND hwnd); 
 
 	UINT getState();

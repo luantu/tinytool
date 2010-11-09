@@ -16,7 +16,7 @@ Countdown::Countdown()
 	this->m_stoppedForeColor = RGB(63, 63, 0); 
 	this->m_currForeColor = this->m_normalForeColor;
 
-	this->m_totalMilliSec = 15 * 60 * 1000;				// default: 15 min.
+	this->setTotalTime(15 * 60);				// default: 15 min.
 	this->m_displayTime = this->m_totalMilliSec;
 	this->m_cdState = CDS_WAITING;
 }
@@ -28,6 +28,7 @@ Countdown::~Countdown()
 void Countdown::setTotalTime(UINT sec)
 {
 	this->m_totalMilliSec = sec * 1000;
+	ZeroMemory(&this->m_tFormat, sizeof(TIME_FORMAT));
 }
 
 UINT Countdown::getTotalTime()
@@ -145,7 +146,7 @@ BOOL Countdown::pauseCountdown()
 	return this->m_cdState & CDS_PAUSED;
 }
 
-BOOL Countdown::resetCountdown(HWND hwnd, int sec /* = -1 */)
+BOOL Countdown::resetCountdown(HWND hwnd)
 {
 	BOOL ret = TRUE; 
 	if (this->m_cdState != CDS_STOPPED)
@@ -154,11 +155,6 @@ BOOL Countdown::resetCountdown(HWND hwnd, int sec /* = -1 */)
 	}
 	this->m_cdState = CDS_WAITING;
 	this->m_displayTime = this->m_totalMilliSec; 
-
-	if (!(sec < 0))
-	{
-		this->m_displayTime = this->m_totalMilliSec = sec * 1000;
-	}
 
 	return ret; 
 }
@@ -171,7 +167,6 @@ BOOL Countdown::stopCountdown(HWND hwnd)
 		if (ret = KillTimer(hwnd, IDT_COUNTDOWN))
 		{
 			this->m_cdState = CDS_STOPPED;
-			ZeroMemory(&this->m_tFormat, sizeof(TIME_FORMAT));
 		}
 	}
 
