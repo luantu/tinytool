@@ -2,7 +2,8 @@
 #include "Countdown.h"
 #include "TimeArtist.h"
 
-#define DARK(x)	(x * 4 / 5)
+#define DARK(x)		(x * 4 / 5)
+#define ALMOST_ZERO	100
 
 Countdown::Countdown()
 {
@@ -52,21 +53,21 @@ void Countdown::chooseColor()
 		this->m_currForeColor = this->m_pausedForeColor; 
 		break;
 	case CDS_STARTED:
-		if (this->m_displayTime <= (WARN_TIME >> 2) + 100)
+		if (this->m_displayTime <= (WARN_TIME >> 2) + ALMOST_ZERO)
 		{
-			DWORD ms = (this->m_displayTime - 100) % 1000; 
+			DWORD ms = (this->m_displayTime - ALMOST_ZERO) % 1000; 
 			this->m_currBkColor = ms % 250 < 200 ? this->m_normalBkColor : this->m_warningBkColor; 
 			this->m_currForeColor = ms % 250 < 200 ? this->m_normalForeColor : this->m_warningForeColor;
 		}
-		else if (this->m_displayTime <= (WARN_TIME >> 1) + 100)
+		else if (this->m_displayTime <= (WARN_TIME >> 1) + ALMOST_ZERO)
 		{
-			DWORD ms = (this->m_displayTime - 100) % 1000; 
+			DWORD ms = (this->m_displayTime - ALMOST_ZERO) % 1000; 
 			this->m_currBkColor = ms % 500 < 400 ? this->m_normalBkColor : this->m_warningBkColor; 
 			this->m_currForeColor = ms % 500 < 400 ? this->m_normalForeColor : this->m_warningForeColor;
 		}
-		else if (this->m_displayTime <= WARN_TIME + 100)
+		else if (this->m_displayTime <= WARN_TIME + ALMOST_ZERO)
 		{
-			DWORD ms = (this->m_displayTime - 100) % 1000; 
+			DWORD ms = (this->m_displayTime - ALMOST_ZERO) % 1000; 
 			this->m_currBkColor = ms < 800 ? this->m_normalBkColor : this->m_warningBkColor; 
 			this->m_currForeColor = ms < 800 ? this->m_normalForeColor : this->m_warningForeColor;
 		}
@@ -100,19 +101,36 @@ BOOL Countdown::draw(HWND hWnd)
 		this->m_currForeColor = RGB(DARK(GetRValue(this->m_currForeColor)), DARK(GetGValue(this->m_currForeColor)), DARK(GetBValue(this->m_currForeColor))); 
 	}
 
+	HBRUSH brush = NULL;
 	HBRUSH bkBrush = ::CreateSolidBrush(this->m_currBkColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(hMemDc, bkBrush); 
 	FillRect(hMemDc, &rect, bkBrush); 
+	RECT r = {
+		rect.left + 5, 
+		rect.top + 5,
+		rect.right - 3,
+		rect.bottom - 5
+	}; 
 
-	rect.left += 5;
-	rect.top += 5;
-	rect.right -= 3;
-	rect.bottom -= 5;
-	DrawTime(hMemDc, &this->m_currForeColor, this->m_displayTime + 900, &rect, &m_tFormat);
+	DrawTime(hMemDc, &this->m_currForeColor, this->m_displayTime + 900, &r, &m_tFormat);
+
+	// Draw the progress line.
+	if (this->m_displayTime > ALMOST_ZERO)
+	{
+		rect.top = rect.bottom - 3;
+		int w = rect.right - rect.left;
+		rect.left += w * (this->m_totalMilliSec - this->m_displayTime) / this->m_totalMilliSec;
+		brush = ::CreateSolidBrush(this->m_currForeColor); 
+		FillRect(hMemDc, &rect, brush); 
+	}
 
 	::BitBlt(hdc, 0, 0, size.cx, size.cy, hMemDc, 0, 0, SRCCOPY); 
 	::EndPaint(hWnd, &ps);
 
+	if (brush)
+	{
+		::DeleteObject(brush); 
+	}
 	::DeleteObject(bkBrush); 
 	::DeleteObject(hbm);
 	::DeleteDC(hMemDc); 
@@ -187,7 +205,7 @@ void Countdown::TimerProc(HWND hwnd)
 	{
 		DWORD dt = GetTickCount() - this->m_startTime; 
 		this->m_displayTime = this->m_totalMilliSec - dt; 
-		if (this->m_displayTime <= 100)
+		if (this->m_displayTime <= ALMOST_ZERO)
 		{
 			this->stopCountdown(hwnd); 
 		}
