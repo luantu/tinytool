@@ -108,8 +108,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static POINT preMousePos; 
 	static RECT preWindowPos;
 	static TRACKMOUSEEVENT* ptme = NULL;
+	static DWORD clickTime = 0; 
+	static BOOL bActivateClick = FALSE;
+
+	HWND hTmp;
 	switch (message)
 	{
+	case WM_MOUSEACTIVATE:
+		bActivateClick = (HIWORD(lParam) == WM_LBUTTONDOWN);
+		break;
+	case WM_ACTIVATE:
+		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+		break;
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
 		wmEvent = HIWORD(wParam);
@@ -170,10 +180,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			RECT r;
 			GetWindowRect(hWnd, &r);
-			if (!memcmp(&preWindowPos, &r, sizeof(RECT)))
+			if (!memcmp(&preWindowPos, &r, sizeof(RECT)) && !bActivateClick)
 			{
 				PauseStartCountdown(hWnd);
 			}
+			bActivateClick = FALSE;
 			ReleaseCapture();
 		}
 		break;
@@ -188,7 +199,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				ptme->dwHoverTime	= HOVER_DEFAULT;
 				TrackMouseEvent(ptme); 
 			}
-			ShowHelpDialog(hWnd, bShowHelp);
+			if (GetForegroundWindow() == hWnd)
+			{
+				ShowHelpDialog(hWnd, bShowHelp);
+			}
 			if (GetCapture() == hWnd)
 			{
 				POINT p;
@@ -205,6 +219,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					TRUE); 
 				MoveHelpDialog(hWnd);
 			}
+			RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
 		}
 		break;
 	case WM_MOUSELEAVE:
