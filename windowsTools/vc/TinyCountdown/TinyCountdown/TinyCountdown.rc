@@ -88,24 +88,28 @@ BEGIN
     EDITTEXT        IDC_EDIT_TIME,0,0,61,12,ES_RIGHT | ES_AUTOHSCROLL
 END
 
-IDD_HELP DIALOGEX 0, 0, 204, 106
+IDD_HELP DIALOGEX 0, 0, 204, 128
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     RTEXT           "Start Countdown:",IDC_STATIC,16,13,58,8
     RTEXT           "Pause Countdown:",IDC_STATIC,12,26,62,8
     RTEXT           "Reset Countdown:",IDC_STATIC,13,39,61,8
-    RTEXT           "Help (this screen):",IDC_STATIC,14,72,60,8
+    RTEXT           "Help (this screen):",IDC_STATIC,14,102,60,8
     LTEXT           "Space / Left Click (when paused)",IDC_STATIC,82,13,109,8
     LTEXT           "Space / Left Click (when started)",IDC_STATIC,82,26,107,8
     LTEXT           "Space / Left Click (when stopped)",IDC_STATIC,82,39,107,8
     LTEXT           "Backspace",IDC_STATIC,82,47,107,8
-    LTEXT           "F1 / Middle Click (toggle)",IDC_STATIC,82,72,79,8
-    RTEXT           "Set Time:",IDC_STATIC,43,58,31,8
-    LTEXT           "Enter / Right Click",IDC_STATIC,82,58,107,8
-    RTEXT           "Exit:",IDC_STATIC,58,87,16,8
-    LTEXT           "ESC",IDC_STATIC,82,87,30,8
+    LTEXT           "F1 / Middle Click (toggle)",IDC_STATIC,82,102,79,8
+    RTEXT           "Set Time:",IDC_STATIC,43,61,31,8
+    LTEXT           "Enter / Right Click",IDC_STATIC,82,61,107,8
+    RTEXT           "Exit:",IDC_STATIC,58,115,16,8
+    LTEXT           "ESC",IDC_STATIC,82,115,30,8
     CTEXT           ">>>> HELP <<<<   ",IDC_STATIC,2,2,200,8
+    RTEXT           "Always On Top:",IDC_STATIC,22,74,52,8
+    LTEXT           "Home",IDC_STATIC,82,74,107,8
+    RTEXT           "Disable Top Most:",IDC_STATIC,16,87,58,8
+    LTEXT           "End",IDC_STATIC,82,87,107,8
 END
 
 
@@ -157,14 +161,16 @@ BEGIN
         VERTGUIDE, 74
         VERTGUIDE, 82
         TOPMARGIN, 2
-        BOTTOMMARGIN, 104
+        BOTTOMMARGIN, 126
         HORZGUIDE, 13
         HORZGUIDE, 26
         HORZGUIDE, 39
         HORZGUIDE, 47
-        HORZGUIDE, 58
-        HORZGUIDE, 72
+        HORZGUIDE, 61
+        HORZGUIDE, 74
         HORZGUIDE, 87
+        HORZGUIDE, 102
+        HORZGUIDE, 115
     END
 END
 #endif    // APSTUDIO_INVOKED

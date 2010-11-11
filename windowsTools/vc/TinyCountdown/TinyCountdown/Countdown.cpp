@@ -2,6 +2,8 @@
 #include "Countdown.h"
 #include "TimeArtist.h"
 
+#define DARK(x)	(x * 4 / 5)
+
 Countdown::Countdown()
 {
 	this->m_normalBkColor = RGB(0, 0, 0);
@@ -91,6 +93,12 @@ BOOL Countdown::draw(HWND hWnd)
 	::SelectObject(hMemDc, hbm); 
 
 	this->chooseColor();
+
+	if (hWnd != GetForegroundWindow())
+	{
+		this->m_currBkColor = RGB(DARK(GetRValue(this->m_currBkColor)), DARK(GetGValue(this->m_currBkColor)), DARK(GetBValue(this->m_currBkColor))); 
+		this->m_currForeColor = RGB(DARK(GetRValue(this->m_currForeColor)), DARK(GetGValue(this->m_currForeColor)), DARK(GetBValue(this->m_currForeColor))); 
+	}
 
 	HBRUSH bkBrush = ::CreateSolidBrush(this->m_currBkColor);
 	HBRUSH oldBrush = (HBRUSH)::SelectObject(hMemDc, bkBrush); 
