@@ -128,6 +128,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hWnd = CreateWindow(szWindowClass, szTitle, WS_THICKFRAME | WS_SYSMENU | WS_POPUP,
       scr_x - SCR_GAP_X - WND_WIDTH, SCR_GAP_Y, WND_WIDTH, WND_HEIGHT, NULL, NULL, hInstance, NULL);
 
+   hHelpDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_HELP), hWnd, (DLGPROC)HelpDlgProc);
+
    if (!hWnd)
    {
       return FALSE;
