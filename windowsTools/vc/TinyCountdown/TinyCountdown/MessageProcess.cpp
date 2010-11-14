@@ -56,26 +56,26 @@ void PauseStartCountdown(HWND hWnd)
 
 void ShowHelpDialog(HWND hWnd, BOOL bShow)
 {
-	BOOL bHelpExists = IsWindow(hHelpDlg); 
+	BOOL bHelpExists = IsWindowVisible(hHelpDlg); 
 	if (!bShow && bHelpExists)
 	{
-		DestroyWindow(hHelpDlg);
+		ShowWindow(hHelpDlg, SW_HIDE);
 	}
 	else if (bShow && !bHelpExists)
 	{
-		hHelpDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_HELP), hWnd, (DLGPROC)HelpDlgProc);
-		MoveHelpDialog(hWnd);
-		ShowWindow(hHelpDlg, SW_SHOW);
-		SetFocus(hWnd);
+		//hHelpDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_HELP), hWnd, (DLGPROC)HelpDlgProc);
+		//MoveHelpDialog(hWnd, hHelpDlg);
+		ShowWindow(hHelpDlg, SW_SHOWNOACTIVATE);
+		//SetFocus(hWnd);
 	}
 }
 
-void MoveHelpDialog(HWND hWnd)
+void MoveHelpDialog(HWND hWnd, HWND hDlg)
 {
-	if (IsWindow(hHelpDlg))
+	if (IsWindow(hDlg))
 	{
 		RECT dlgRect;
-		GetClientRect(hHelpDlg, &dlgRect); 
+		GetClientRect(hDlg, &dlgRect); 
 		RECT wndRect;
 		GetWindowRect(hWnd, &wndRect);
 		int h = GetSystemMetrics(SM_CYFULLSCREEN); 
@@ -88,7 +88,7 @@ void MoveHelpDialog(HWND hWnd)
 			dlgRect.top += wndRect.bottom + 1;
 		}
 		dlgRect.left += (wndRect.right + wndRect.left - dlgRect.right) >> 1; 
-		MoveWindow(hHelpDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, FALSE);
+		MoveWindow(hDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, TRUE);
 	}
 }
 
@@ -111,7 +111,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static DWORD clickTime = 0; 
 	static BOOL bActivateClick = FALSE;
 
-	HWND hTmp;
 	switch (message)
 	{
 	case WM_MOUSEACTIVATE:
@@ -217,7 +216,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					preWindowPos.right - preWindowPos.left, 
 					preWindowPos.bottom - preWindowPos.top, 
 					TRUE); 
-				MoveHelpDialog(hWnd);
+				MoveHelpDialog(hWnd, hHelpDlg);
 			}
 			RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
 		}
@@ -230,6 +229,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_MBUTTONUP:
 		bShowHelp = !bShowHelp;
 		ShowHelpDialog(hWnd, bShowHelp); 
+		break;
+	case WM_MOUSEWHEEL:
+		{
+			short delta = HIWORD(wParam);
+			delta >>= (LOWORD(wParam) & MK_CONTROL) ? 3 : 6;
+			RECT rect = {0};
+			GetWindowRect(hWnd, &rect);
+			int x = GET_X_LPARAM(lParam);
+			int y = GET_Y_LPARAM(lParam);
+			if (x > rect.left && x < rect.right && y > rect.top && y < rect.bottom)
+			{
+				int w = rect.right - rect.left;
+				int h = rect.bottom - rect.top;
+				MoveWindow(hWnd, 
+					rect.left - (w > h ? delta * w / h : delta), 
+					rect.top - (w > h ? delta : delta * h / w),
+					w + (w > h ? (delta << 1) * w / h : (delta << 1)),
+					h + (w > h ? (delta << 1) : (delta << 1) * h / w), 
+					TRUE);
+				MoveHelpDialog(hWnd, hHelpDlg);
+			}
+		}
 		break;
 	case WM_KEYDOWN:
 		switch(wParam)
@@ -369,7 +390,7 @@ INT_PTR CALLBACK TimeInputProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 
 INT_PTR CALLBACK HelpDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	static HBRUSH bkBrush; 
+	static HBRUSH bkBrush = NULL; 
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message)
 	{
@@ -378,6 +399,8 @@ INT_PTR CALLBACK HelpDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			SetWindowLong(hDlg, GWL_EXSTYLE, WS_EX_LAYERED); 
 			SetLayeredWindowAttributes(hDlg, NULL, 215, LWA_ALPHA);
 			bkBrush = CreateSolidBrush(HELP_BK_COLOR); 
+			HWND hWnd = GetParent(hDlg); 
+			MoveHelpDialog(hWnd, hDlg);
 		}
 		return (INT_PTR)TRUE;
 
@@ -411,7 +434,11 @@ INT_PTR CALLBACK HelpDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		break;
 
 	case WM_DESTROY:
-		DeleteObject(bkBrush); 
+		if (bkBrush)
+		{
+			DeleteObject(bkBrush); 
+			bkBrush = NULL;
+		}
 		MinimizeMemory();
 		break;
 
