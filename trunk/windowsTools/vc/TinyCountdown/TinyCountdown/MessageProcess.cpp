@@ -60,6 +60,7 @@ void ShowHelpDialog(HWND hWnd, BOOL bShow)
 	if (!bShow && bHelpExists)
 	{
 		ShowWindow(hHelpDlg, SW_HIDE);
+		MinimizeMemory();
 	}
 	else if (bShow && !bHelpExists)
 	{
@@ -88,7 +89,7 @@ void MoveHelpDialog(HWND hWnd, HWND hDlg)
 			dlgRect.top += wndRect.bottom + 1;
 		}
 		dlgRect.left += (wndRect.right + wndRect.left - dlgRect.right) >> 1; 
-		MoveWindow(hDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, TRUE);
+		MoveWindow(hDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, FALSE);
 	}
 }
 
@@ -118,6 +119,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_ACTIVATE:
 		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+		MinimizeMemory();
 		break;
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
@@ -218,7 +220,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					TRUE); 
 				MoveHelpDialog(hWnd, hHelpDlg);
 			}
-			RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+			if (!(cd.getState() & CDS_STARTED))
+			{
+				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+			}
 		}
 		break;
 	case WM_MOUSELEAVE:
@@ -242,12 +247,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				int w = rect.right - rect.left;
 				int h = rect.bottom - rect.top;
-				MoveWindow(hWnd, 
-					rect.left - (w > h ? delta * w / h : delta), 
-					rect.top - (w > h ? delta : delta * h / w),
-					w + (w > h ? (delta << 1) * w / h : (delta << 1)),
-					h + (w > h ? (delta << 1) : (delta << 1) * h / w), 
-					TRUE);
+				int dx = (w > h ? delta * w / h : delta);
+				int dy = (w > h ? delta : delta * h / w);
+				int dw = (w > h ? (delta << 1) * w / h : (delta << 1));
+				int dh = (w > h ? (delta << 1) : (delta << 1) * h / w);
+				if (w <= 50 && delta < 0)
+				{
+					dx = dw = 0;
+				}
+				if (h <= 24 && delta < 0)
+				{
+					dy = dh = 0;
+				}
+				if (dx != 0 && dy != 0)
+				{
+					MoveWindow(hWnd, 
+						rect.left - dx, 
+						rect.top - dy,
+						w + dw,
+						h + dh, 
+						TRUE);
+					MoveHelpDialog(hWnd, hHelpDlg);
+				}
+			}
+		}
+		break;
+	case WM_SIZE:
+		{
+			unsigned short w = LOWORD(lParam);
+			unsigned short h = HIWORD(lParam);
+			if (w < 5 && h < 3)
+			{
+				PostMessage(hWnd, WM_CLOSE, NULL, NULL);
+			}
+			else
+			{
 				MoveHelpDialog(hWnd, hHelpDlg);
 			}
 		}
@@ -302,6 +336,21 @@ INT_PTR CALLBACK TimeInputProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 			_stprintf(time, _T("%d:%02d:%02d"), hour, min, sec); 
 			Edit_SetText(hEdit, time); 
 			Edit_SetSel(hEdit, 0, MAX_TIME_LEN + 1);
+
+			// Move the dialog to the center of parent window.
+			HWND hWnd = GetParent(hDlg);
+			RECT wndRect;
+			GetWindowRect(hWnd, &wndRect);
+			RECT dlgRect;
+			GetWindowRect(hDlg, &dlgRect);
+
+			dlgRect.right -= dlgRect.left;
+			dlgRect.bottom -= dlgRect.top;
+			dlgRect.left = ((wndRect.left + wndRect.right) >> 1);
+			dlgRect.top = ((wndRect.top + wndRect.bottom) >> 1);
+			dlgRect.left -= (dlgRect.right >> 1);
+			dlgRect.top -= (dlgRect.bottom >> 1);
+			MoveWindow(hDlg, dlgRect.left, dlgRect.top, dlgRect.right, dlgRect.bottom, FALSE); 
 
 			if (GetDlgCtrlID((HWND) wParam) != IDC_EDIT_TIME)
 			{
