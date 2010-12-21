@@ -89,10 +89,13 @@ protected:
 	BOOL IsPointIntoRect(__in POINT* pt, __in RECT* pRect); 
 	BOOL IsPointIntoRect(__in LONG* x, __in LONG* y, __in RECT* pRect); 
 
+	void ResetBoundary(__in BOOL bForce = FALSE);
+
 public:
 	void AdjustLabelOrientation(); 
 	void AdjustLineLabelOrientation(); 
 	void Draw(); 
+	void Draw(HDC hdcCanvas); 
 
 	void GetStartPointCaptureRect(__out RECT* pRect); 
 	BOOL IsPointIntoStartPoint(__in POINT* pt); 

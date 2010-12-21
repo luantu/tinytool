@@ -130,13 +130,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    }
    SetTopMost(hWnd); 
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
    // My own initialize codes. 
-   vrd = new VisualRulerData(hWnd); 
+   vrd = new VisualRulerData(hWnd);
    RECT rect; 
    ::GetWindowRect(hWnd, &rect); 
+   if (rect.left == 0 && rect.top == 0 && rect.right == 0 && rect.bottom == 0) {
+	   ::SetRect(&rect, 0, 0, 
+		   ::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN));
+   }
    int mx = rect.right >> 1; 
    int my = rect.bottom >> 1; 
    vrd->startPt.x = rect.left + (mx >> 1); 
@@ -145,9 +146,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    vrd->endPt.y = rect.bottom - (mx >> 1); 
    vrd->AdjustLabelOrientation(); 
    vrd->AdjustLineLabelOrientation(); 
-   MinimizeMemory(); 
    // End own init
 
+   ShowWindow(hWnd, nCmdShow);
+   UpdateWindow(hWnd);
+
+   MinimizeMemory(); 
 
    return TRUE;
 }
@@ -186,14 +190,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			bNeedMinimizeMemory = TRUE; 
 		}
 		break; 
-	case WM_PAINT:
-		{
-			if (vrd != NULL)
-			{
-				vrd->Draw(); 
-			}
+	case WM_ERASEBKGND:
+		if (vrd) {
+			vrd->Draw((HDC)wParam);
+			return TRUE;
 		}
 		break;
+	//case WM_PAINT:
+	//	{
+	//		if (vrd != NULL)
+	//		{
+	//			vrd->Draw(); 
+	//		}
+	//	}
+	//	break;
 	case WM_COMMAND:
 		{
 			switch(LOWORD(wParam))
@@ -737,7 +747,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	if (bNeedRedraw)
 	{
-		::RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
+		::InvalidateRect(hWnd, NULL, TRUE);
 	}
 	if (bNeedMinimizeMemory || bNeedRedraw)
 	{
