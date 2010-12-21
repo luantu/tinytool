@@ -301,10 +301,10 @@ ShowListAll:
 	rowNum := clipCount > MAX_ROW_NUM ? MAX_ROW_NUM : clipCount
 	rowNum := rowNum < MIN_ROW_NUM ? MIN_ROW_NUM : rowNum
 	if (not guiCreated) {
-		Gui, Margin, 0, 0
-		Gui, +ToolWindow +Resize
-		Gui, Add, ListView, r%rowNum% w500 gListAllEventHandler vClipList -LV0x10 +LV0x08 Grid Count%clipCount% AltSubmit, |No.|Content|Copy Time
-		Gui, Add, Button, Hidden Default, OK
+		Gui, 3: Margin, 0, 0
+		Gui, 3: +ToolWindow +Resize
+		Gui, 3: Add, ListView, r%rowNum% w500 gListAllEventHandler vClipList -LV0x10 +LV0x08 Grid Count%clipCount% AltSubmit, |No.|Content|Copy Time
+		Gui, 3: Add, Button, Hidden Default, OK
 		GuiControlGet, ClipList, Pos
 		guiCreated := True
 		rowH := ClipListH / rowNum
@@ -320,7 +320,7 @@ ShowListAll:
 	GuiControl, -Redraw, ClipList
 	Gosub, UpdateAllClipList
 	GuiControl, +Redraw, ClipList
-	Gui, Show, Center AutoSize, %ListWinTitle%
+	Gui, 3: Show, Center AutoSize, %ListWinTitle%
 	SetTimer, ShowSplash, Off
 	SplashTextOff
 	GoSub, FreeMemory
@@ -338,20 +338,21 @@ ShowSplash:
 	SplashTextOn,200,20,Loading...,Loading Clipboards...
 	return
 
-GuiClose:
+3GuiClose:
 	GuiControlGet, ClipList, Pos
-	Gui, Cancel
+	Gui, 3: Cancel
 	GoSub, ClearContentCache
 	GoSub, UpdateClipboardContent
 	GoSub, FreeMemory
 	listShowing := False
 	return
 
-GuiEscape:
-	GoSub, GuiClose
+3GuiEscape:
+	GoSub, 3GuiClose
 	return
 
-GuiSize:
+3GuiSize:
+	Gui, 3: Default
 	if A_EventInfo = 1
 		return
 	GuiControl, Move, ClipList, % "w" . A_GuiWidth . "h" . A_GuiHeight
@@ -360,6 +361,7 @@ GuiSize:
 
 ; Update the GUI window
 UpdateAllClipList:
+	Gui, 3: Default
 	co := clipboardOperating
 	clipboardOperating := true
 	LV_Delete()
@@ -430,7 +432,7 @@ GuiActivate(wParam, lParam)
 	if (wParam = 0) {
 		if A_Gui
 		{
-			Gosub, GuiClose
+			Gosub, 3GuiClose
 		}
 	}
 }
@@ -514,7 +516,7 @@ RemoveSelectedClips:
 		if not r
 		{
 			if (removedCount = 0 && A_GuiEvent = "R") {
-				GoSub, GuiClose
+				GoSub, 3GuiClose
 				return
 			} else {
 				break
@@ -557,7 +559,7 @@ RemoveSelectedClips:
 	}
 	
 	if (LV_GetCount() = 0) {
-		GoSub, GuiClose
+		GoSub, 3GuiClose
 		return
 	}
 	
