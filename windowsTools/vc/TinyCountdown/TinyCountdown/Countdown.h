@@ -17,6 +17,8 @@ public:
 	Countdown();
 	virtual ~Countdown();
 	BOOL draw(HWND hwnd);
+	BOOL draw(HWND hwnd, HDC hdc);
+	BOOL drawBackground(HWND hwnd, HDC hdc);
 
 	BOOL startCountdown(HWND hwnd);
 	BOOL pauseCountdown();

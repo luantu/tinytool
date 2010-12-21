@@ -27,7 +27,7 @@ void SetTime(HWND hWnd)
 	if (DialogBox(hInst, MAKEINTRESOURCE(IDD_TIME_INPUT), hWnd, TimeInputProc) == IDOK)
 	{
 		cd.resetCountdown(hWnd); 
-		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
+		::InvalidateRect(hWnd, NULL, TRUE); 
 	}
 	else if (!(state & CDS_PAUSED))
 	{
@@ -43,7 +43,7 @@ void PauseStartCountdown(HWND hWnd)
 	{
 	case CDS_STOPPED:
 		cd.resetCountdown(hWnd);
-		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
+		::InvalidateRect(hWnd, NULL, TRUE); 
 		break;
 	case CDS_WAITING:
 		cd.startCountdown(hWnd);
@@ -118,7 +118,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		bActivateClick = (HIWORD(lParam) == WM_LBUTTONDOWN);
 		break;
 	case WM_ACTIVATE:
-		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+		::InvalidateRect(hWnd, NULL, TRUE); 
 		MinimizeMemory();
 		break;
 	case WM_COMMAND:
@@ -140,10 +140,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_TIMER:
 		cd.TimerProc(hWnd);
-		RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
+		::InvalidateRect(hWnd, NULL, TRUE); 
 		break;
-	case WM_PAINT:
-		cd.draw(hWnd); 
+	case WM_ERASEBKGND:
+		return cd.draw(hWnd, (HDC)wParam);
 		break;
 	case WM_CLOSE:
 		if (cd.getState() & CDS_STARTED)
@@ -222,7 +222,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			if (!(cd.getState() & CDS_STARTED))
 			{
-				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+				::InvalidateRect(hWnd, NULL, TRUE); 
 			}
 		}
 		break;
@@ -297,7 +297,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case VK_BACK:
 			cd.resetCountdown(hWnd);
-			RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE); 
+			::InvalidateRect(hWnd, NULL, TRUE); 
 			break;
 		case VK_HOME:
 			SetTopMost(hWnd, TRUE); 
@@ -308,6 +308,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case VK_F1:
 			bShowHelp = !bShowHelp;
 			ShowHelpDialog(hWnd, bShowHelp); 
+			break;
+		case 'M':
+			{
+				static BOOL bMax = FALSE;
+				bMax = !bMax;
+				::ShowWindow(hWnd, bMax ? SW_MAXIMIZE : SW_RESTORE); 
+			}
 			break;
 		}
 		break;
@@ -414,6 +421,22 @@ INT_PTR CALLBACK TimeInputProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 							int colonCount = 0;
 							for (int i = 0, j = 0; i < len; i++)
 							{
+								switch(editText[i])
+								{
+								case '.':
+								case ';':
+								case '\'':
+								case '\"':
+								case ',':
+								case '`':
+								case '-':
+								case '+':
+								case '_':
+								case '=':
+									editText[i] = ':';
+									break;
+								}
+
 								if ((editText[i] >= '0' && editText[i] <= '9') || (editText[i] == ':' && colonCount < 2))
 								{
 									finalText[j++] = editText[i]; 

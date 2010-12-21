@@ -84,11 +84,20 @@ void Countdown::chooseColor()
 
 BOOL Countdown::draw(HWND hWnd)
 {
+	PAINTSTRUCT ps;
+	HDC hdc = ::BeginPaint(hWnd, &ps);
+
+	BOOL ret = this->draw(hWnd, hdc);
+
+	::EndPaint(hWnd, &ps);
+	return ret;
+}
+
+BOOL Countdown::draw(HWND hWnd, HDC hdc)
+{
 	RECT rect; 
 	GetClientRect(hWnd, &rect); 
 	SIZE size = {rect.right - rect.left, rect.bottom - rect.top}; 
-	PAINTSTRUCT ps;
-	HDC hdc = ::BeginPaint(hWnd, &ps);
 	HDC hMemDc = ::CreateCompatibleDC(hdc); 
 	HBITMAP hbm = ::CreateCompatibleBitmap(hdc, size.cx, size.cy); 
 	::SelectObject(hMemDc, hbm); 
@@ -125,7 +134,6 @@ BOOL Countdown::draw(HWND hWnd)
 	}
 
 	::BitBlt(hdc, 0, 0, size.cx, size.cy, hMemDc, 0, 0, SRCCOPY); 
-	::EndPaint(hWnd, &ps);
 
 	if (brush)
 	{
@@ -134,6 +142,26 @@ BOOL Countdown::draw(HWND hWnd)
 	::DeleteObject(bkBrush); 
 	::DeleteObject(hbm);
 	::DeleteDC(hMemDc); 
+	return TRUE;
+}
+
+BOOL Countdown::drawBackground(HWND hWnd, HDC hdc)
+{
+	RECT rect; 
+	GetClientRect(hWnd, &rect); 
+	SIZE size = {rect.right - rect.left, rect.bottom - rect.top}; 
+	this->chooseColor();
+
+	if (hWnd != GetForegroundWindow())
+	{
+		this->m_currBkColor = RGB(DARK(GetRValue(this->m_currBkColor)), DARK(GetGValue(this->m_currBkColor)), DARK(GetBValue(this->m_currBkColor))); 
+		this->m_currForeColor = RGB(DARK(GetRValue(this->m_currForeColor)), DARK(GetGValue(this->m_currForeColor)), DARK(GetBValue(this->m_currForeColor))); 
+	}
+
+	HBRUSH bkBrush = ::CreateSolidBrush(this->m_currBkColor);
+	FillRect(hdc, &rect, bkBrush); 
+
+	::DeleteObject(bkBrush); 
 	return TRUE;
 }
 
