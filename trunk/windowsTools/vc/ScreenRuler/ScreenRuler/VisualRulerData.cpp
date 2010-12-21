@@ -39,10 +39,8 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 	this->m_orientation = 0; 
 	this->m_lineLableDist = 100;
 
-	RECT windowRect; 
-	::GetWindowRect(hWnd, &windowRect); 
-	this->m_boundary.cx = windowRect.right - windowRect.left;
-	this->m_boundary.cy = windowRect.bottom - windowRect.top; 
+	this->m_boundary.cx = 0;
+	this->m_boundary.cy = 0; 
 
 	this->CalculateCapture();
 }
@@ -303,17 +301,38 @@ void VisualRulerData::DrawDistanceLine(__in HDC hdc, __in HDC hdcMem)
 	delete[] szText; 
 }
 
+void VisualRulerData::ResetBoundary(BOOL bForce)
+{
+	if (bForce || (this->m_boundary.cx == 0 && this->m_boundary.cy == 0)) {
+		RECT rect;
+		::GetClientRect(this->m_hWnd, &rect);
+		if (rect.right == 0 && rect.bottom == 0) {
+			rect.right = ::GetSystemMetrics(SM_CXSCREEN);
+			rect.bottom = ::GetSystemMetrics(SM_CYSCREEN);
+		}
+		this->m_boundary.cx = rect.right;
+		this->m_boundary.cy = rect.bottom;
+	}
+}
+
 void VisualRulerData::Draw()
 {
 	PAINTSTRUCT ps; 
+	HDC hdcCanvas = ::BeginPaint(this->m_hWnd, &ps); 
+	this->Draw(hdcCanvas);
+	::EndPaint(this->m_hWnd, &ps); 
+}
+
+void VisualRulerData::Draw(HDC hdcCanvas)
+{
 	TCHAR* szText = NULL; 
 	szText = new TCHAR[128]; 
 
+	this->ResetBoundary();
+
 	// prepare memory buffer. 
-	HDC hdcWin = ::GetDC(this->m_hWnd); 
-	HDC hdc = ::CreateCompatibleDC(hdcWin); 
-	HBITMAP hbm = ::CreateCompatibleBitmap(hdcWin, this->m_boundary.cx, this->m_boundary.cy); 
-	::ReleaseDC(this->m_hWnd, hdcWin); 
+	HDC hdc = ::CreateCompatibleDC(hdcCanvas); 
+	HBITMAP hbm = ::CreateCompatibleBitmap(hdcCanvas, this->m_boundary.cx, this->m_boundary.cy); 
 
 	::SelectObject(hdc, hbm); 
 	RECT screenRect = {0, 0, this->m_boundary.cx, this->m_boundary.cy}; 
@@ -366,9 +385,7 @@ void VisualRulerData::Draw()
 	::DeleteDC(hdcMem4Point); 
 	// ----------------------------------------------
 	// put memory buffer to the physical device. 
-	HDC hdcCanvas = ::BeginPaint(this->m_hWnd, &ps); 
 	::BitBlt(hdcCanvas, 0, 0, this->m_boundary.cx, this->m_boundary.cy, hdc, 0, 0, SRCCOPY); 
-	::EndPaint(this->m_hWnd, &ps); 
 
 	::DeleteObject(hbm); 
 	::DeleteDC(hdc); 
@@ -411,6 +428,7 @@ void VisualRulerData::AdjustLabelOrientation()
 
 void VisualRulerData::AdjustSinglePointLabel(__in POINT pt, __inout int* po)
 {
+	this->ResetBoundary();
 	RECT rect = {
 		pt.x + this->m_captureOffsets[*po].cx, 
 		pt.y + this->m_captureOffsets[*po].cy, 
