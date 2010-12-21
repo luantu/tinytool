@@ -88,28 +88,30 @@ BEGIN
     EDITTEXT        IDC_EDIT_TIME,0,0,61,12,ES_RIGHT | ES_AUTOHSCROLL
 END
 
-IDD_HELP DIALOGEX 64512, 64512, 204, 128
+IDD_HELP DIALOGEX 64512, 64512, 204, 144
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     RTEXT           "Start Countdown:",IDC_STATIC,16,13,58,8
     RTEXT           "Pause Countdown:",IDC_STATIC,12,26,62,8
     RTEXT           "Reset Countdown:",IDC_STATIC,13,39,61,8
-    RTEXT           "Help (this screen):",IDC_STATIC,14,102,60,8
+    RTEXT           "Help (this screen):",IDC_STATIC,14,117,60,8
     LTEXT           "Space / Left Click (when paused)",IDC_STATIC,82,13,109,8
     LTEXT           "Space / Left Click (when started)",IDC_STATIC,82,26,107,8
     LTEXT           "Space / Left Click (when stopped)",IDC_STATIC,82,39,107,8
     LTEXT           "Backspace",IDC_STATIC,82,47,107,8
-    LTEXT           "F1 / Middle Click (toggle)",IDC_STATIC,82,102,79,8
-    RTEXT           "Set Time:",IDC_STATIC,43,61,31,8
-    LTEXT           "Enter / Right Click",IDC_STATIC,82,61,107,8
-    RTEXT           "Exit:",IDC_STATIC,58,115,16,8
-    LTEXT           "ESC",IDC_STATIC,82,115,30,8
+    LTEXT           "F1 / Middle Click (toggle)",IDC_STATIC,82,117,79,8
+    RTEXT           "Set Time:",IDC_STATIC,43,62,31,8
+    LTEXT           "Enter / Right Click",IDC_STATIC,82,62,107,8
+    RTEXT           "Exit:",IDC_STATIC,58,130,16,8
+    LTEXT           "ESC",IDC_STATIC,82,130,30,8
     CTEXT           ">>>> HELP <<<<   ",IDC_STATIC,2,2,200,8
-    RTEXT           "Always On Top:",IDC_STATIC,22,74,52,8
-    LTEXT           "Home",IDC_STATIC,82,74,107,8
-    RTEXT           "Disable Top Most:",IDC_STATIC,16,87,58,8
-    LTEXT           "End",IDC_STATIC,82,87,107,8
+    RTEXT           "Always On Top:",IDC_STATIC,22,76,52,8
+    LTEXT           "Home",IDC_STATIC,82,76,107,8
+    RTEXT           "Disable Top Most:",IDC_STATIC,16,89,58,8
+    LTEXT           "End",IDC_STATIC,82,89,107,8
+    RTEXT           "Toggle Maximize:",IDC_STATIC,18,102,56,8
+    LTEXT           "M",IDC_STATIC,82,102,107,8
 END
 
 
@@ -161,16 +163,17 @@ BEGIN
         VERTGUIDE, 74
         VERTGUIDE, 82
         TOPMARGIN, 2
-        BOTTOMMARGIN, 126
+        BOTTOMMARGIN, 142
         HORZGUIDE, 13
         HORZGUIDE, 26
         HORZGUIDE, 39
         HORZGUIDE, 47
-        HORZGUIDE, 61
-        HORZGUIDE, 74
-        HORZGUIDE, 87
+        HORZGUIDE, 62
+        HORZGUIDE, 76
+        HORZGUIDE, 89
         HORZGUIDE, 102
-        HORZGUIDE, 115
+        HORZGUIDE, 117
+        HORZGUIDE, 130
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -182,8 +185,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2010,11,9
- PRODUCTVERSION 1,2010,11,9
+ FILEVERSION 1,2010,12,21
+ PRODUCTVERSION 1,2010,12,21
  FILEFLAGSMASK 0x1fL
 #ifdef _DEBUG
  FILEFLAGS 0x9L
@@ -200,13 +203,13 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Programus"
             VALUE "FileDescription", "Tiny Coundown Application"
-            VALUE "FileVersion", "1, 2010, 11, 9"
+            VALUE "FileVersion", "1, 2010, 12, 21"
             VALUE "InternalName", "TinyCoun"
             VALUE "LegalCopyright", "Freeware"
             VALUE "OriginalFilename", "TinyCountdown.exe"
             VALUE "PrivateBuild", "1"
-            VALUE "ProductName", " TinyCoun アプリケーション"
-            VALUE "ProductVersion", "1, 2010, 11, 9"
+            VALUE "ProductName", " TinyCount Application"
+            VALUE "ProductVersion", "1, 2010, 12, 21"
         END
     END
     BLOCK "VarFileInfo"
