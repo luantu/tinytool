@@ -14,15 +14,24 @@ private:
 	char* prevPercentages;
 	char* currPercentages;
 
-	ULONGLONG prevMemoryBytes;
+	unsigned int prevDispMemory;
+	unsigned char prevUnitIndex;
 
-	ULONGLONG currMemoryBytes;
 	unsigned int dispMemory;
 	unsigned char unitIndex;
+
+	unsigned int totalDispMemory;
+	unsigned char totalUnitIndex;
 
 	static const TCHAR* UNITS;
 
 	PerformanceIcon pi;
+
+protected:
+	ULONGLONG getTotalMemoryBytes();
+	ULONGLONG getMemoryBytes();
+	BOOL retrieveCpuPercentage();
+	unsigned int getDispMemory(ULONGLONG mem, unsigned char* ui);
 public:
 	PerformanceMonitor(void);
 	~PerformanceMonitor(void);
@@ -30,9 +39,6 @@ public:
 	BOOL isPdhSuccess() {
 		return bPdhSuccess;
 	}
-
-	ULONGLONG getMemoryBytes();
-	BOOL retrieveCpuPercentage();
 
 	HICON getIcon();
 	int cpyTip(TCHAR* tip, size_t len);

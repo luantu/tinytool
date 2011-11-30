@@ -5,10 +5,10 @@ const TCHAR* PerformanceMonitor::UNITS = _T("BKMGTPEZY");
 
 PerformanceMonitor::PerformanceMonitor(void)
 {
-	this->prevMemoryBytes = 0;
-	this->currMemoryBytes = 0;
 	this->dispMemory = 0;
 	this->unitIndex = 0;
+	this->totalDispMemory = 0;
+	this->totalUnitIndex = 0;
 
 	SYSTEM_INFO si = {0};
 	GetSystemInfo(&si);
@@ -28,6 +28,8 @@ PerformanceMonitor::PerformanceMonitor(void)
 		PdhAddCounter(hQuery, name, 0, phCounters + i + 1);
 	}
 	PdhCollectQueryData(hQuery);
+
+	this->totalDispMemory = this->getDispMemory(this->getTotalMemoryBytes(), &this->totalUnitIndex);
 }
 
 PerformanceMonitor::~PerformanceMonitor(void)
@@ -44,6 +46,14 @@ ULONGLONG PerformanceMonitor::getMemoryBytes()
 	mse.dwLength = sizeof(mse);
 	::GlobalMemoryStatusEx(&mse);
 	return mse.ullAvailPhys;
+}
+
+ULONGLONG PerformanceMonitor::getTotalMemoryBytes()
+{
+	MEMORYSTATUSEX mse = {0};
+	mse.dwLength = sizeof(mse);
+	::GlobalMemoryStatusEx(&mse);
+	return mse.ullTotalPhys;
 }
 
 BOOL PerformanceMonitor::retrieveCpuPercentage()
@@ -64,27 +74,33 @@ BOOL PerformanceMonitor::retrieveCpuPercentage()
 	return status == ERROR_SUCCESS;
 }
 
+unsigned int PerformanceMonitor::getDispMemory(ULONGLONG mem, unsigned char *ui)
+{
+	if (mem >= 1000) {
+		*ui = 1;
+		while ((mem >> 10) >= 1000) {
+			mem >>= 10;
+			(*ui)++;
+		}
+	} else {
+		*ui = 0;
+	}
+	return (unsigned int)mem;
+}
+
 BOOL PerformanceMonitor::next()
 {
 	this->retrieveCpuPercentage();
-	this->currMemoryBytes = this->getMemoryBytes();
+	this->dispMemory = this->getDispMemory(this->getMemoryBytes(), &this->unitIndex);
+
 	BOOL ret = !(
 		(memcmp(this->currPercentages, this->prevPercentages, this->cpuCount + 1) == 0) && 
-		(this->currMemoryBytes == this->prevMemoryBytes));
-	ULONGLONG mem = this->currMemoryBytes;
-	if (mem >= 1000) {
-		this->unitIndex = 1;
-		while ((mem >> 10) >= 1000) {
-			mem >>= 10;
-			this->unitIndex++;
-		}
-	} else {
-		this->unitIndex = 0;
-	}
-	this->dispMemory = (unsigned int)mem;
+		(this->dispMemory == this->prevDispMemory) &&
+		(this->unitIndex == this->prevUnitIndex));
 
 	memcpy(this->prevPercentages, this->currPercentages, this->cpuCount + 1);
-	this->prevMemoryBytes = this->currMemoryBytes;
+	this->prevDispMemory = this->dispMemory;
+	this->prevUnitIndex = this->unitIndex;
 	return ret;
 }
 
@@ -95,11 +111,16 @@ HICON PerformanceMonitor::getIcon()
 
 int PerformanceMonitor::cpyTip(TCHAR *tip, size_t len)
 {
-	TCHAR mem[5] = {0};
+	TCHAR mem[10] = {0};
 	if ((this->dispMemory >> 10) < 10) {
 		_stprintf_p(mem, sizeof(mem)/sizeof(TCHAR), _T("%d.%d%c"), this->dispMemory >> 10, ((this->dispMemory & 0x3ff) * 10) >> 10, PerformanceMonitor::UNITS[this->unitIndex]);
 	} else {
-		_stprintf_p(mem, sizeof(mem)/sizeof(TCHAR), _T("%d%c"), this->dispMemory >> 10, PerformanceMonitor::UNITS[this->unitIndex]);
+		_stprintf_p(mem, sizeof(mem)/sizeof(TCHAR), _T("%3d%c"), this->dispMemory >> 10, PerformanceMonitor::UNITS[this->unitIndex]);
+	}
+	if ((this->totalDispMemory >> 10) < 10) {
+		_stprintf_p(mem + 4, sizeof(mem)/sizeof(TCHAR), _T("/%d.%d%c"), this->totalDispMemory >> 10, ((this->totalDispMemory & 0x3ff) * 10) >> 10, PerformanceMonitor::UNITS[this->totalUnitIndex]);
+	} else {
+		_stprintf_p(mem + 4, sizeof(mem)/sizeof(TCHAR), _T("/%3d%c"), this->totalDispMemory >> 10, PerformanceMonitor::UNITS[this->totalUnitIndex]);
 	}
 	static const char CPUBYTE = 5;
 	size_t l = this->cpuCount * CPUBYTE;
