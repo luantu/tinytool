@@ -8,9 +8,12 @@
 #define CHAR_W		3
 #define CHAR_H		5
 #define CHAR_GAP	1
-#define LINETOP_0	1
-#define LINETOP_1	10
+#define LINETOP_0	2
+#define LINETOP_1	9
 #define GAP_L		1
+#define CPU_L1		0
+#define CPU_L2		15
+#define CPU_MAX		16
 
 #define CPU_H(x)	(250 - (x << 1) - (x >> 1))
 #define CPU_S		255

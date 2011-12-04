@@ -48,16 +48,27 @@ PerformanceIcon::~PerformanceIcon(void)
 
 HICON PerformanceIcon::getIcon(char *pCpuPercentages, int nCpu, int displayMemory, char unit)
 {
-	static unsigned char ptCpuLights[] = {
-		0x17, 0xd7, 
-		0x28, 0xe8,
-		0x57, 0x97, 
-		0x68, 0xa8, 
-		0x37, 0xb7, 
-		0x48, 0xc8, 
-		0x77, 0x88, 
-		0x11, 0x15,
+	static unsigned __int32 linePos[CPU_MAX >> 1] = {
+		//76543210
+		0x00000007, // 1
+		0x000000e0, // 2
+		0x00000e70, // 3
+		0x0000e950, // 4
+		0x000ea740, // 5
+		0x00eb8630, // 6
+		0x0eca7420, // 7
+		0xeca86420, // 8
 	};
+	//static unsigned char ptCpuLights[] = {
+	//	0x17, 0xd7, 
+	//	0x28, 0xe8,
+	//	0x57, 0x97, 
+	//	0x68, 0xa8, 
+	//	0x37, 0xb7, 
+	//	0x48, 0xc8, 
+	//	0x77, 0x88, 
+	//	0x11, 0x15,
+	//};
 	char buff[CHAR_N];
 
 	HDC hdc = ::GetDC(NULL);
@@ -95,11 +106,27 @@ HICON PerformanceIcon::getIcon(char *pCpuPercentages, int nCpu, int displayMemor
 	}
 
 	// CPU lights for every core
+	if (nCpu > CPU_MAX) {
+		nCpu = CPU_MAX;
+	}
+	int half = nCpu - (nCpu >> 1);
+	unsigned __int32 lp1 = linePos[half-1];
+	unsigned __int32 lp2 = linePos[nCpu - half - 1];
 	for (int i = 0; i < nCpu; i++) {
 		int p = pCpuPercentages[i + 1];
 		COLORREF color = {0};
 		HSV2RGB(CPU_H(p), CPU_S, CPU_V, &color);
-		::SetPixel(hdcBuff, ptCpuLights[i] >> 4, ptCpuLights[i] & 0x0f, color);
+		unsigned char y = 0;
+		unsigned char x = 0;
+		if (i < half) {
+			y = CPU_L1;
+			x = (lp1 >> (i << 2)) & 0x0f;
+		} else {
+			y = CPU_L2;
+			x = (lp2 >> ((i - half) << 2)) & 0x0f;
+		}
+		::SetPixel(hdcBuff, x, y, color);
+		::SetPixel(hdcBuff, x + 1, y, color);
 	}
 
 	ICONINFO ii = {0};
