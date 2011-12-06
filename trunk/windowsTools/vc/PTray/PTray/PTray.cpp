@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Psapi.h"
 #include "resource.h"
 #include "PerformanceMonitor.h"
 
@@ -14,7 +15,9 @@
 #define SWM_EXIT	WM_APP + 3//	close the window
 
 #define MUTEX_SZ	"Performance System Tray. //"
+#define PROC_MAX	4096
 
+typedef BOOL (*PROCFUNC)(DWORD);
 
 // Global Variables:
 HINSTANCE		hInst;	// current instance
@@ -24,6 +27,8 @@ PerformanceMonitor pm;
 BOOL				InitInstance(HINSTANCE, int);
 BOOL				AddSysTray(HWND hWnd);
 INT_PTR CALLBACK	TrayProc(HWND, UINT, WPARAM, LPARAM);
+void				FuncAllProcess(PROCFUNC);
+BOOL				SweepProcess(DWORD processId);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -136,6 +141,9 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case SWM_TRAYMSG:
 		switch(lParam)
 		{
+		case WM_LBUTTONDOWN:
+			FuncAllProcess(SweepProcess);
+			break;
 		case WM_LBUTTONDBLCLK:
 			MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION);
 			break;
@@ -206,4 +214,34 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return 0;
+}
+
+void FuncAllProcess(PROCFUNC func)
+{
+	DWORD processIds[PROC_MAX];
+	DWORD cbNeeded = 0;
+	DWORD nProcess = 0;
+
+	if (::EnumProcesses(processIds, sizeof(processIds), &cbNeeded)) {
+		nProcess = cbNeeded / sizeof(DWORD);
+		for (unsigned int i = 0; i < nProcess; i++) {
+			if (processIds[i]) {
+				func(processIds[i]);
+			}
+		}
+	}
+}
+
+BOOL SweepProcess(DWORD processId)
+{
+	BOOL ret = FALSE;
+	if (processId) {
+		HANDLE hProcess = ::OpenProcess(PROCESS_SET_QUOTA, FALSE, processId); 
+		if (hProcess) {
+			ret = ::SetProcessWorkingSetSize(hProcess, -1, -1);
+		}
+		::CloseHandle(hProcess);
+		hProcess = NULL;
+	}
+	return ret;
 }

@@ -60,7 +60,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="Pdh.lib"
+				AdditionalDependencies="Pdh.lib Psapi.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -138,11 +138,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pdh.lib shell32.lib user32.lib gdi32.lib $(NOINHERIT)"
+				AdditionalDependencies="pdh.lib shell32.lib user32.lib gdi32.lib Psapi.lib $(NOINHERIT)"
 				ShowProgress="1"
 				LinkIncremental="1"
 				IgnoreAllDefaultLibraries="false"
-				GenerateDebugInformation="true"
+				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -229,6 +229,10 @@
 			>
 			<File
 				RelativePath=".\res\3x5chars.bmp"
+				>
+			</File>
+			<File
+				RelativePath=".\res\PTray.ico"
 				>
 			</File>
 			<File
