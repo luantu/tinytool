@@ -16,11 +16,11 @@
 #define CPU_MAX		16
 
 #define CPU_H(x)	(250 - (x << 1) - (x >> 1))
-#define CPU_S		255
+#define CPU_S		200
 #define CPU_V		255
 
-#define CPU_COLOR	(RGB(0xff, 0xff, 0x00))
-#define MEM_COLOR	(RGB(0x00, 0xff, 0x00))
+#define CPU_COLOR	(RGB(0xff, 0xff, 0x55))
+#define MEM_COLOR	(RGB(0x55, 0xff, 0x55))
 
 class PerformanceIcon
 {
@@ -36,7 +36,7 @@ protected:
 	void makeCpuChars(char percentage, char* buff);
 	void makeMemoryChars(int dispMemory, char unit, char* buff);
 public:
-	PerformanceIcon(void);
+	PerformanceIcon(COLORREF cpuColor=CPU_COLOR, COLORREF memColor=MEM_COLOR);
 	~PerformanceIcon(void);
 
 	HICON getIcon(char* pCpuPercentages, int nCpu, int displayMemory, char unit);

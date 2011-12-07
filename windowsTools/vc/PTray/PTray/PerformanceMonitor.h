@@ -25,7 +25,7 @@ private:
 
 	static const TCHAR* UNITS;
 
-	PerformanceIcon pi;
+	PerformanceIcon* ppi;
 
 protected:
 	ULONGLONG getTotalMemoryBytes();
@@ -39,6 +39,8 @@ public:
 	BOOL isPdhSuccess() {
 		return bPdhSuccess;
 	}
+
+	void setColors(COLORREF cpuColor, COLORREF memColor);
 
 	HICON getIcon();
 	int cpyTip(TCHAR* tip, size_t len);

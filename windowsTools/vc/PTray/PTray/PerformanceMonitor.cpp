@@ -9,6 +9,7 @@ PerformanceMonitor::PerformanceMonitor(void)
 	this->unitIndex = 0;
 	this->totalDispMemory = 0;
 	this->totalUnitIndex = 0;
+	this->ppi = NULL;
 
 	SYSTEM_INFO si = {0};
 	GetSystemInfo(&si);
@@ -35,9 +36,22 @@ PerformanceMonitor::PerformanceMonitor(void)
 PerformanceMonitor::~PerformanceMonitor(void)
 {
 	PdhCloseQuery(hQuery);
+	if (this->ppi) {
+		delete this->ppi;
+		this->ppi = NULL;
+	}
 	delete[] this->phCounters;
 	delete[] this->prevPercentages;
 	delete[] this->currPercentages;
+}
+
+void PerformanceMonitor::setColors(COLORREF cpuColor, COLORREF memColor)
+{
+	if (this->ppi) {
+		delete this->ppi;
+		this->ppi = NULL;
+	}
+	this->ppi = new PerformanceIcon(cpuColor, memColor);
 }
 
 ULONGLONG PerformanceMonitor::getMemoryBytes()
@@ -106,7 +120,10 @@ BOOL PerformanceMonitor::next()
 
 HICON PerformanceMonitor::getIcon()
 {
-	return pi.getIcon(this->currPercentages, this->cpuCount, this->dispMemory, (char)PerformanceMonitor::UNITS[this->unitIndex]);
+	if (!this->ppi) {
+		this->ppi = new PerformanceIcon();
+	}
+	return ppi->getIcon(this->currPercentages, this->cpuCount, this->dispMemory, (char)PerformanceMonitor::UNITS[this->unitIndex]);
 }
 
 int PerformanceMonitor::cpyTip(TCHAR *tip, size_t len)
