@@ -26,6 +26,7 @@ PerformanceMonitor pm;
 
 BOOL				InitInstance(HINSTANCE, int);
 BOOL				AddSysTray(HWND hWnd);
+void				ProcessParameter(LPTSTR lpCmdLine);
 INT_PTR CALLBACK	TrayProc(HWND, UINT, WPARAM, LPARAM);
 void				FuncAllProcess(PROCFUNC);
 BOOL				SweepProcess(DWORD processId);
@@ -47,6 +48,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		return FALSE;
 	}
 
+	ProcessParameter(lpCmdLine);
+
 	// Perform application initialization:
 	if (!InitInstance (hInstance, nCmdShow)) return FALSE;
 
@@ -60,6 +63,67 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		}
 	}
 	return (int) msg.wParam;
+}
+
+void ProcessParameter(LPTSTR lpCmdLine)
+{
+	const TCHAR* delimiter = _T(" \t\n\r");
+	COLORREF cpuColor = CPU_COLOR;
+	COLORREF memColor = MEM_COLOR;
+	for (TCHAR* p = _tcstok(lpCmdLine, delimiter); p; p = _tcstok(NULL, delimiter)) {
+		if (*p == _T('-')) {
+			COLORREF* pColor = NULL;
+			if (_tcscmp(p, _T("-cpu")) == 0) {
+				pColor = &cpuColor;
+			}
+			if (_tcscmp(p, _T("-mem")) == 0 || _tcscmp(p, _T("-memory")) == 0) {
+				pColor = &memColor;
+			}
+			if (pColor) {
+				TCHAR* sColor = _tcstok(NULL, delimiter);
+				if (sColor) {
+					size_t n = _tcslen(sColor);
+					if (n == 6) {
+						__int32 rgb = 0;
+						for (unsigned char i = 0; i < n; i++) {
+							TCHAR c = sColor[i];
+							rgb <<= 4;
+							if (c >= _T('0') && c <= _T('9')) {
+								rgb += c - _T('0');
+							}
+							if (c >= _T('a') && c <= _T('f')) {
+								rgb += c - _T('a') + 10;
+							}
+							if (c >= _T('A') && c <= _T('F')) {
+								rgb += c - _T('A') + 10;
+							}
+						}
+						*pColor = RGB((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+					}
+					if (n == 3) {
+						__int32 rgb = 0;
+						for (unsigned char i = 0; i < n; i++) {
+							TCHAR c = sColor[i];
+							unsigned char delta = 0;
+							if (c >= _T('0') && c <= _T('9')) {
+								delta = c - _T('0');
+							}
+							if (c >= _T('a') && c <= _T('f')) {
+								delta = c - _T('a') + 10;
+							}
+							if (c >= _T('A') && c <= _T('F')) {
+								delta = c - _T('A') + 10;
+							}
+							rgb <<= 8;
+							rgb += (delta << 4) + delta;
+						}
+						*pColor = RGB((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
+					}
+				}
+			}
+		}
+	}
+	pm.setColors(cpuColor, memColor);
 }
 
 //	Initialize the window and tray icon
@@ -157,13 +221,6 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		break;
-	//case WM_SYSCOMMAND:
-	//	if((wParam & 0xFFF0) == SC_MINIMIZE)
-	//	{
-	//		ShowWindow(hWnd, SW_HIDE);
-	//		return 1;
-	//	}
-	//	break;
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
 		wmEvent = HIWORD(wParam); 
@@ -175,8 +232,6 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		return 1;
-	//case WM_INITDIALOG:
-	//	return OnInitDialog(hWnd);
 	case WM_CLOSE:
 		DestroyWindow(hWnd);
 		break;
@@ -189,7 +244,6 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_TIMER:
 		{
-			static PerformanceMonitor pm;
 			if (pm.next()) {
 				DestroyIcon(niData.hIcon);
 				niData.hIcon = pm.getIcon();

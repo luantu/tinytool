@@ -6,11 +6,11 @@ const RECT PerformanceIcon::rcChar = {0, 0, CHAR_W, CHAR_H};
 const RECT PerformanceIcon::rcIcon = {0, 0, ICON_W, ICON_H};
 
 static void HSV2RGB(int h, int s, int v, COLORREF* rgb);
-PerformanceIcon::PerformanceIcon(void)
+PerformanceIcon::PerformanceIcon(COLORREF cpuColor, COLORREF memColor)
 {
 	this->hbmAscii = ::LoadBitmap(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDB_ASCII));
-	this->hbrCpuBrush = ::CreateSolidBrush(CPU_COLOR);
-	this->hbrMemBrush = ::CreateSolidBrush(MEM_COLOR);
+	this->hbrCpuBrush = ::CreateSolidBrush(cpuColor);
+	this->hbrMemBrush = ::CreateSolidBrush(memColor);
 	this->initMask();
 }
 
