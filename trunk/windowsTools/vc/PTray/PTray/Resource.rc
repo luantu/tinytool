@@ -74,6 +74,47 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 
 IDB_ASCII               BITMAP                  "res\\3x5chars.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x1fL
+#ifdef _DEBUG
+ FILEFLAGS 0x9L
+#else
+ FILEFLAGS 0x8L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000904b0"
+        BEGIN
+            VALUE "Comments", "A Performance Monitor & Optimize Program"
+            VALUE "CompanyName", "Programus (programus@gmail.com)"
+            VALUE "FileDescription", "Performance Tray"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "PTray"
+            VALUE "LegalCopyright", "Apache License 2.0"
+            VALUE "OriginalFilename", "PTray.exe"
+            VALUE "PrivateBuild", "20111211"
+            VALUE "ProductName", "Performance Tray"
+            VALUE "ProductVersion", "1, 0, 0, 1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x9, 1200
+    END
+END
+
 #endif    // âpåÍ (ïƒçë) resources
 /////////////////////////////////////////////////////////////////////////////
 
