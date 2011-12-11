@@ -138,7 +138,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pdh.lib shell32.lib user32.lib gdi32.lib Psapi.lib $(NOINHERIT)"
+				AdditionalDependencies="pdh.lib shell32.lib user32.lib gdi32.lib Psapi.lib Advapi32.lib $(NOINHERIT)"
 				ShowProgress="1"
 				LinkIncremental="1"
 				IgnoreAllDefaultLibraries="false"
@@ -192,6 +192,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ProcessPriorityTable.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\PTray.cpp"
 				>
 			</File>
@@ -211,6 +215,10 @@
 			</File>
 			<File
 				RelativePath=".\PerformanceMonitor.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ProcessPriorityTable.h"
 				>
 			</File>
 			<File

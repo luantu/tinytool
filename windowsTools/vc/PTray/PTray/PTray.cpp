@@ -2,6 +2,7 @@
 #include "Psapi.h"
 #include "resource.h"
 #include "PerformanceMonitor.h"
+#include "ProcessPriorityTable.h"
 
 #define TRAYICONID	1//				ID number for the Notify Icon
 #define TIMER_ID	1//				Timer ID
@@ -15,7 +16,10 @@
 #define SWM_EXIT	WM_APP + 3//	close the window
 
 #define MUTEX_SZ	"Performance System Tray. //"
-#define PROC_MAX	4096
+#define PROC_MAX	1024
+#define MAX_FPATH	1024
+#define MAX_FNAME	256
+#define NP_INDEX	2			// Normal Priority Index
 
 typedef BOOL (*PROCFUNC)(DWORD);
 
@@ -23,13 +27,28 @@ typedef BOOL (*PROCFUNC)(DWORD);
 HINSTANCE		hInst;	// current instance
 NOTIFYICONDATA	niData;	// notify icon data
 PerformanceMonitor pm;
+ProcessPriorityTable ppt;
+
+const DWORD PCLASSES[] = {
+	IDLE_PRIORITY_CLASS, 
+	BELOW_NORMAL_PRIORITY_CLASS,
+	NORMAL_PRIORITY_CLASS,
+	ABOVE_NORMAL_PRIORITY_CLASS,
+	HIGH_PRIORITY_CLASS,
+	REALTIME_PRIORITY_CLASS,
+};
 
 BOOL				InitInstance(HINSTANCE, int);
 BOOL				AddSysTray(HWND hWnd);
 void				ProcessParameter(LPTSTR lpCmdLine);
 INT_PTR CALLBACK	TrayProc(HWND, UINT, WPARAM, LPARAM);
+
+void				LoadIniFile();
+
+BOOL				GetDebugPrivilege();
 void				FuncAllProcess(PROCFUNC);
 BOOL				SweepProcess(DWORD processId);
+BOOL				SetProcessPriority(DWORD processId);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -49,6 +68,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	}
 
 	ProcessParameter(lpCmdLine);
+	LoadIniFile();
+	GetDebugPrivilege();
 
 	// Perform application initialization:
 	if (!InitInstance (hInstance, nCmdShow)) return FALSE;
@@ -209,12 +230,28 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			FuncAllProcess(SweepProcess);
 			break;
 		case WM_LBUTTONDBLCLK:
-			MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION);
+			{
+				static BOOL bMsgBox = FALSE;
+				if (!bMsgBox) {
+					bMsgBox = TRUE;
+					while(ppt.bProcessing);
+					LoadIniFile();
+					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION);
+					bMsgBox = FALSE;
+				}
+			}
 			break;
 		case WM_RBUTTONDOWN:
 		case WM_CONTEXTMENU:
-			if (MessageBox(hWnd, _T("Quit?"), _T("Confirmation"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
-				DestroyWindow(hWnd);
+			{
+				static BOOL bMsgBox = FALSE;
+				if (!bMsgBox) {
+					bMsgBox = TRUE;
+					if (MessageBox(hWnd, _T("Quit?"), _T("Confirmation"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+						DestroyWindow(hWnd);
+					}
+					bMsgBox = FALSE;
+				}
 			}
 			break;
 		case WM_RBUTTONDBLCLK:
@@ -255,11 +292,16 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					niData.uFlags |= NIF_MESSAGE;
 					Shell_NotifyIcon(NIM_ADD, &niData);
 				}
-				static int count = MIN_MEM_T;
-				if (count++ > MIN_MEM_T) {
-					::SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
-					count %= MIN_MEM_T;
-				}
+			}
+			if (ppt.getProcessNum() && !ppt.bProcessing) {
+				ppt.bProcessing = TRUE;
+				FuncAllProcess(SetProcessPriority); 
+				ppt.bProcessing = FALSE;
+			}
+			static int count = MIN_MEM_T;
+			if (count++ > MIN_MEM_T) {
+				::SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
+				count %= MIN_MEM_T;
 			}
 		}
 		break;
@@ -298,4 +340,96 @@ BOOL SweepProcess(DWORD processId)
 		hProcess = NULL;
 	}
 	return ret;
+}
+
+BOOL SetProcessPriority(DWORD processId)
+{
+	BOOL ret = FALSE;
+	if (processId) {
+		HANDLE hProcess = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION | PROCESS_VM_READ, FALSE, processId); 
+		if (hProcess) {
+			TCHAR* fileName = (TCHAR*)calloc(MAX_FNAME, sizeof(TCHAR*));
+			DWORD len = ::GetModuleBaseName(hProcess, NULL, fileName, MAX_FNAME);
+			if (len) {
+				int i = ppt.getPriorityValue(fileName);
+				if (i != PRIORITY_UNCHANGE) {
+					DWORD targetPriority = PCLASSES[i + NP_INDEX];
+					DWORD currPriority = ::GetPriorityClass(hProcess);
+					if (currPriority != targetPriority) {
+						ret = ::SetPriorityClass(hProcess, targetPriority);
+						if (!ret) {
+							DWORD errNo = ::GetLastError();
+							DWORD iii = errNo;
+						}
+					}
+				} else {
+					ret = TRUE;
+				}
+			}
+			if (fileName) {
+				free(fileName);
+			}
+		}
+		::CloseHandle(hProcess);
+		hProcess = NULL;
+	}
+	return ret;
+}
+
+BOOL GetDebugPrivilege()
+{
+    BOOL             fSuccess    = FALSE;
+    HANDLE           TokenHandle = NULL;
+    TOKEN_PRIVILEGES TokenPrivileges;
+
+    if (OpenProcessToken(GetCurrentProcess(),
+                          TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+                          &TokenHandle))
+    {
+		TokenPrivileges.PrivilegeCount = 1;
+
+		if (LookupPrivilegeValue(NULL,
+								  SE_DEBUG_NAME,
+								  &TokenPrivileges.Privileges[0].Luid))
+		{
+
+			TokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+			if (AdjustTokenPrivileges(TokenHandle,
+									   FALSE,
+									   &TokenPrivileges,
+									   sizeof(TokenPrivileges),
+									   NULL,
+									   NULL))
+			{
+				fSuccess = TRUE;
+			}
+
+		}
+    }
+    if (TokenHandle)
+    {
+        CloseHandle(TokenHandle);
+    }
+    return fSuccess;
+}
+
+void LoadIniFile()
+{
+	ppt.bProcessing = TRUE;
+	TCHAR* fileName = NULL;
+	fileName = (TCHAR*)calloc(MAX_FPATH, sizeof(TCHAR));
+	DWORD len = ::GetModuleFileName(NULL, fileName, MAX_FPATH);
+	TCHAR* exPart = fileName + len - 4;
+	if (_tcsicmp(exPart, _T(".exe")) == 0) {
+		_tcscpy(exPart, _T(".ini"));
+		ppt.clear();
+		ppt.loadFromIniFile(fileName);
+	}
+	if (fileName) {
+		free(fileName);
+		fileName = NULL;
+		exPart = NULL;
+	}
+	ppt.bProcessing = FALSE;
 }
