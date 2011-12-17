@@ -24,10 +24,11 @@
 typedef BOOL (*PROCFUNC)(DWORD);
 
 // Global Variables:
-HINSTANCE		hInst;	// current instance
-NOTIFYICONDATA	niData;	// notify icon data
-PerformanceMonitor pm;
-ProcessPriorityTable ppt;
+HINSTANCE				hInst;		// current instance
+NOTIFYICONDATA			niData;		// notify icon data
+PerformanceMonitor		pm;			// performance monitor instance
+ProcessPriorityTable	ppt;		// process priority bi-tree table
+BOOL					bMsgBox;	// indicate whether the message box is being shown
 
 const DWORD PCLASSES[] = {
 	IDLE_PRIORITY_CLASS, 
@@ -49,6 +50,7 @@ BOOL				GetDebugPrivilege();
 void				FuncAllProcess(PROCFUNC);
 BOOL				SweepProcess(DWORD processId);
 BOOL				SetProcessPriority(DWORD processId);
+void				FocusMsg();
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -171,6 +173,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	pm.next();
 
+	bMsgBox = FALSE;
+
 	return AddSysTray(hWnd);
 }
 
@@ -231,12 +235,11 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_LBUTTONDBLCLK:
 			{
-				static BOOL bMsgBox = FALSE;
 				if (!bMsgBox) {
 					bMsgBox = TRUE;
 					while(ppt.bProcessing);
 					LoadIniFile();
-					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION);
+					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 					bMsgBox = FALSE;
 				}
 			}
@@ -244,10 +247,9 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_RBUTTONDOWN:
 		case WM_CONTEXTMENU:
 			{
-				static BOOL bMsgBox = FALSE;
 				if (!bMsgBox) {
 					bMsgBox = TRUE;
-					if (MessageBox(hWnd, _T("Quit?"), _T("Confirmation"), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+					if (MessageBox(hWnd, _T("Quit?"), _T("Confirmation"), MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) {
 						DestroyWindow(hWnd);
 					}
 					bMsgBox = FALSE;
@@ -312,6 +314,7 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+// enumerate all processes and process it by using the specified function.
 void FuncAllProcess(PROCFUNC func)
 {
 	DWORD processIds[PROC_MAX];
@@ -348,23 +351,27 @@ BOOL SetProcessPriority(DWORD processId)
 	if (processId) {
 		HANDLE hProcess = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION | PROCESS_VM_READ, FALSE, processId); 
 		if (hProcess) {
-			TCHAR* fileName = (TCHAR*)calloc(MAX_FNAME, sizeof(TCHAR*));
-			DWORD len = ::GetModuleBaseName(hProcess, NULL, fileName, MAX_FNAME);
+			int priority = PRIORITY_UNCHANGE;
+			TCHAR* fileName = (TCHAR*)calloc(MAX_FPATH, sizeof(TCHAR));
+			DWORD len = ::GetModuleFileNameEx(hProcess, NULL, fileName, MAX_FPATH);
 			if (len) {
-				int i = ppt.getPriorityValue(fileName);
-				if (i != PRIORITY_UNCHANGE) {
-					DWORD targetPriority = PCLASSES[i + NP_INDEX];
-					DWORD currPriority = ::GetPriorityClass(hProcess);
-					if (currPriority != targetPriority) {
-						ret = ::SetPriorityClass(hProcess, targetPriority);
-						if (!ret) {
-							DWORD errNo = ::GetLastError();
-							DWORD iii = errNo;
-						}
-					}
-				} else {
-					ret = TRUE;
+				priority = ppt.getPriorityValue(fileName);
+			}
+			if (priority == PRIORITY_UNCHANGE) {
+				memset(fileName, 0, MAX_FPATH);
+				len = ::GetModuleBaseName(hProcess, NULL, fileName, MAX_FPATH);
+				if (len) {
+					priority = ppt.getPriorityValue(fileName);
 				}
+			}
+			if (priority != PRIORITY_UNCHANGE) {
+				DWORD targetPriority = PCLASSES[priority + NP_INDEX];
+				DWORD currPriority = ::GetPriorityClass(hProcess);
+				if (currPriority != targetPriority) {
+					ret = ::SetPriorityClass(hProcess, targetPriority);
+				}
+			} else if (len) {
+				ret = TRUE;
 			}
 			if (fileName) {
 				free(fileName);
@@ -432,4 +439,8 @@ void LoadIniFile()
 		exPart = NULL;
 	}
 	ppt.bProcessing = FALSE;
+}
+
+void FocusMsg()
+{
 }
