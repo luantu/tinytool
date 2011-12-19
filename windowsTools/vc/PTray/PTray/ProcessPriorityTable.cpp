@@ -16,9 +16,9 @@ BiTreeTable::~BiTreeTable()
 
 void BiTreeTable::clear(Entry *p, BOOL bLeft)
 {
-	if (!p->left) {
+	if (p->left) {
 		clear(p->left, TRUE);
-	} else if (!p->right) {
+	} else if (p->right) {
 		clear(p->right, FALSE);
 	} else {
 		if (p->parent) {
@@ -154,12 +154,13 @@ void** BiTreeTable::getValues()
 
 int fnameComp(void* s1, void* s2)
 {
-	return _tcsnicmp((TCHAR*)s1, (TCHAR*)s2, _tcslen((TCHAR*)s1));
+	return lstrcmpi((TCHAR*)s1, (TCHAR*)s2);
 }
 
 ProcessPriorityTable::ProcessPriorityTable(void)
 {
 	this->bProcessing = FALSE;
+	this->bInterrupted = FALSE;
 	this->processTable = NULL;
 }
 
@@ -199,9 +200,9 @@ void ProcessPriorityTable::loadFromIniFile(TCHAR *fileName)
 	::GetPrivateProfileSectionNames(buffer, dwSize, fileName);
 
 	for (TCHAR* sname = buffer; *sname != '\0'; ) {
-		size_t len = _tcslen(sname); 
+		int len = lstrlen(sname); 
 		TCHAR* key = (TCHAR*) calloc(len + 1, sizeof(TCHAR));
-		_tcscpy(key, sname);
+		lstrcpyn(key, sname, (int)(len + 1));
 		int* pvalue = (int*)calloc(1, sizeof(int));
 		*pvalue = ::GetPrivateProfileInt(sname, _T(INI_KEY), PRIORITY_UNCHANGE, fileName); 
 		if (*pvalue != PRIORITY_UNCHANGE) {

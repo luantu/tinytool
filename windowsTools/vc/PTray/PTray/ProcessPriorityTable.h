@@ -41,6 +41,7 @@ private:
 	BiTreeTable* processTable;
 public:
 	BOOL bProcessing;
+	BOOL bInterrupted;
 	ProcessPriorityTable(void);
 	~ProcessPriorityTable(void);
 	void loadFromIniFile(TCHAR* fileName);

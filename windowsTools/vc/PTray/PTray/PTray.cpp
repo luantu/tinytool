@@ -15,6 +15,7 @@
 #define SWM_HIDE	WM_APP + 2//	hide the window
 #define SWM_EXIT	WM_APP + 3//	close the window
 
+#define APP_NAME	"Performance Tray"
 #define MUTEX_SZ	"Performance System Tray. //"
 #define PROC_MAX	1024
 #define MAX_FPATH	1024
@@ -50,7 +51,6 @@ BOOL				GetDebugPrivilege();
 void				FuncAllProcess(PROCFUNC);
 BOOL				SweepProcess(DWORD processId);
 BOOL				SetProcessPriority(DWORD processId);
-void				FocusMsg();
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -91,21 +91,22 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 void ProcessParameter(LPTSTR lpCmdLine)
 {
 	const TCHAR* delimiter = _T(" \t\n\r");
+	TCHAR* context = NULL;
 	COLORREF cpuColor = CPU_COLOR;
 	COLORREF memColor = MEM_COLOR;
-	for (TCHAR* p = _tcstok(lpCmdLine, delimiter); p; p = _tcstok(NULL, delimiter)) {
+	for (TCHAR* p = _tcstok_s(lpCmdLine, delimiter, &context); p; p = _tcstok_s(NULL, delimiter, &context)) {
 		if (*p == _T('-')) {
 			COLORREF* pColor = NULL;
-			if (_tcscmp(p, _T("-cpu")) == 0) {
+			if (lstrcmpi(p, _T("-cpu")) == 0) {
 				pColor = &cpuColor;
 			}
-			if (_tcscmp(p, _T("-mem")) == 0 || _tcscmp(p, _T("-memory")) == 0) {
+			if (lstrcmpi(p, _T("-mem")) == 0 || lstrcmpi(p, _T("-memory")) == 0) {
 				pColor = &memColor;
 			}
 			if (pColor) {
-				TCHAR* sColor = _tcstok(NULL, delimiter);
+				TCHAR* sColor = _tcstok_s(NULL, delimiter, &context);
 				if (sColor) {
-					size_t n = _tcslen(sColor);
+					int n = lstrlen(sColor);
 					if (n == 6) {
 						__int32 rgb = 0;
 						for (unsigned char i = 0; i < n; i++) {
@@ -167,7 +168,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	//HWND hWnd = CreateDialog( hInstance, MAKEINTRESOURCE(IDD_DLG_DIALOG),
 	//	NULL, (DLGPROC)DlgProc );
 	if (!hWnd) return FALSE;
-	SetWindowLongPtr(hWnd, GWL_WNDPROC, (LONG_PTR)TrayProc);
+#ifdef _WIN64
+	SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR)TrayProc);
+#else
+	SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG)(LONG_PTR)TrayProc);
+#endif
 
 	SetTimer(hWnd, TIMER_ID, TIMER_DUR, NULL);
 
@@ -208,7 +213,7 @@ BOOL AddSysTray(HWND hWnd)
     niData.uCallbackMessage = SWM_TRAYMSG;
 
 	// tooltip message
-    lstrcpyn(niData.szTip, _T("Time flies like an arrow but\n   fruit flies like a banana!"), sizeof(niData.szTip)/sizeof(TCHAR));
+    lstrcpyn(niData.szTip, _T(APP_NAME), sizeof(niData.szTip)/sizeof(TCHAR));
 
 	Shell_NotifyIcon(NIM_ADD,&niData);
 
@@ -235,11 +240,10 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_LBUTTONDBLCLK:
 			{
+				LoadIniFile();
 				if (!bMsgBox) {
 					bMsgBox = TRUE;
-					while(ppt.bProcessing);
-					LoadIniFile();
-					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T("Performance Tray"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
+					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T(APP_NAME), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 					bMsgBox = FALSE;
 				}
 			}
@@ -249,7 +253,7 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				if (!bMsgBox) {
 					bMsgBox = TRUE;
-					if (MessageBox(hWnd, _T("Quit?"), _T("Confirmation"), MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) {
+					if (MessageBox(hWnd, _T("Quit?"), _T(APP_NAME), MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) {
 						DestroyWindow(hWnd);
 					}
 					bMsgBox = FALSE;
@@ -295,7 +299,7 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					Shell_NotifyIcon(NIM_ADD, &niData);
 				}
 			}
-			if (ppt.getProcessNum() && !ppt.bProcessing) {
+			if (ppt.getProcessNum() && !ppt.bProcessing && !ppt.bInterrupted) {
 				ppt.bProcessing = TRUE;
 				FuncAllProcess(SetProcessPriority); 
 				ppt.bProcessing = FALSE;
@@ -348,7 +352,7 @@ BOOL SweepProcess(DWORD processId)
 BOOL SetProcessPriority(DWORD processId)
 {
 	BOOL ret = FALSE;
-	if (processId) {
+	if (processId && !ppt.bInterrupted) {
 		HANDLE hProcess = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION | PROCESS_VM_READ, FALSE, processId); 
 		if (hProcess) {
 			int priority = PRIORITY_UNCHANGE;
@@ -423,13 +427,13 @@ BOOL GetDebugPrivilege()
 
 void LoadIniFile()
 {
-	ppt.bProcessing = TRUE;
+	ppt.bInterrupted = TRUE;
 	TCHAR* fileName = NULL;
 	fileName = (TCHAR*)calloc(MAX_FPATH, sizeof(TCHAR));
 	DWORD len = ::GetModuleFileName(NULL, fileName, MAX_FPATH);
 	TCHAR* exPart = fileName + len - 4;
-	if (_tcsicmp(exPart, _T(".exe")) == 0) {
-		_tcscpy(exPart, _T(".ini"));
+	if (lstrcmpi(exPart, _T(".exe")) == 0) {
+		lstrcpyn(exPart, _T(".ini"), 5);
 		ppt.clear();
 		ppt.loadFromIniFile(fileName);
 	}
@@ -438,9 +442,5 @@ void LoadIniFile()
 		fileName = NULL;
 		exPart = NULL;
 	}
-	ppt.bProcessing = FALSE;
-}
-
-void FocusMsg()
-{
+	ppt.bInterrupted = FALSE;
 }
