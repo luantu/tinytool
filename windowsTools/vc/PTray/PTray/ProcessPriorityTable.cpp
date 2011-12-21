@@ -11,28 +11,31 @@ BiTreeTable::BiTreeTable(COMPFUNC func)
 
 BiTreeTable::~BiTreeTable()
 {
-	this->clear(this->root, TRUE);
+	this->clear(&this->root, TRUE);
 }
 
-void BiTreeTable::clear(Entry *p, BOOL bLeft)
+void BiTreeTable::clear(Entry **pp, BOOL bLeft)
 {
+	Entry* p = *pp;
 	if (p->left) {
-		clear(p->left, TRUE);
-	} else if (p->right) {
-		clear(p->right, FALSE);
-	} else {
-		if (p->parent) {
-			if (bLeft) {
-				p->parent->left = NULL;
-			} else {
-				p->parent->right = NULL;
-			}
-		}
-		free(p);
-		p = NULL;
+		clear(&p->left, TRUE);
 	}
-	this->size = 0;
-	this->root = NULL;
+	if (p->right) {
+		clear(&p->right, FALSE);
+	}
+
+	if (p->parent) {
+		if (bLeft) {
+			p->parent->left = NULL;
+		} else {
+			p->parent->right = NULL;
+		}
+	}
+	free(p);
+	p = NULL;
+	*pp = NULL;
+
+	this->size--;
 }
 
 void BiTreeTable::put(void* key, void* value)
@@ -196,7 +199,7 @@ void ProcessPriorityTable::loadFromIniFile(TCHAR *fileName)
 
 	// create a buffer which size is the file size to ensure enough size.
 	TCHAR* buffer = NULL;
-	buffer = new TCHAR[dwSize];
+	buffer = (TCHAR*)calloc(dwSize, sizeof(TCHAR));
 	::GetPrivateProfileSectionNames(buffer, dwSize, fileName);
 
 	for (TCHAR* sname = buffer; *sname != '\0'; ) {
@@ -221,7 +224,7 @@ void ProcessPriorityTable::loadFromIniFile(TCHAR *fileName)
 	}
 
 	if (buffer) {
-		delete[] buffer;
+		free(buffer);
 		buffer = NULL;
 	}
 }

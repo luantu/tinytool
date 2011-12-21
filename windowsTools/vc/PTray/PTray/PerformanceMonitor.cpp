@@ -14,11 +14,9 @@ PerformanceMonitor::PerformanceMonitor(void)
 	SYSTEM_INFO si = {0};
 	GetSystemInfo(&si);
 	this->cpuCount = si.dwNumberOfProcessors;
-	this->phCounters = new HCOUNTER[this->cpuCount + 1];
-	this->prevPercentages = new char[this->cpuCount + 1];
-	this->currPercentages = new char[this->cpuCount + 1];
-	memset(this->prevPercentages, 0, this->cpuCount + 1);
-	memset(this->currPercentages, 0, this->cpuCount + 1);
+	this->phCounters = (HCOUNTER*)calloc(this->cpuCount + 1, sizeof(HCOUNTER));
+	this->prevPercentages = (char*) calloc(this->cpuCount + 1, sizeof(char));
+	this->currPercentages = (char*) calloc(this->cpuCount + 1, sizeof(char));
 
 	this->bPdhSuccess = PdhOpenQuery(NULL, 0, &this->hQuery) == ERROR_SUCCESS;
 	PdhAddCounter(hQuery, _T("\\Processor(_Total)\\% Processor Time"), 0, phCounters);
@@ -40,9 +38,9 @@ PerformanceMonitor::~PerformanceMonitor(void)
 		delete this->ppi;
 		this->ppi = NULL;
 	}
-	delete[] this->phCounters;
-	delete[] this->prevPercentages;
-	delete[] this->currPercentages;
+	free(this->phCounters);
+	free(this->prevPercentages);
+	free(this->currPercentages);
 }
 
 void PerformanceMonitor::setColors(COLORREF cpuColor, COLORREF memColor)
@@ -141,8 +139,7 @@ int PerformanceMonitor::cpyTip(TCHAR *tip, size_t len)
 	}
 	static const char CPUBYTE = 5;
 	size_t l = this->cpuCount * CPUBYTE;
-	TCHAR* sCPUs = new TCHAR[l + 1];
-	memset(sCPUs, 0, sizeof(TCHAR) * (l + 1));
+	TCHAR* sCPUs = (TCHAR*) calloc(l + 1, sizeof(TCHAR));
 	for (int i = 0; i < this->cpuCount; i++) {
 		TCHAR buff[CPUBYTE] = {0};
 		_itot_s(this->currPercentages[i+1], buff, CPUBYTE, 10);
@@ -153,6 +150,6 @@ int PerformanceMonitor::cpyTip(TCHAR *tip, size_t len)
 	}
 	static TCHAR* format = _T("CPU: %d%% [%s]\nMemory: %s");
 	int ret = _stprintf_p(tip, len, format, this->currPercentages[0], sCPUs, mem);
-	delete[] sCPUs;
+	free(sCPUs);
 	return ret;
 }

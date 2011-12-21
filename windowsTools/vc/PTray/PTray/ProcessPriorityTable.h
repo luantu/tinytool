@@ -22,7 +22,7 @@ protected:
 	unsigned int size;
 	void** aTmp;
 	COMPFUNC compFunc;
-	void clear(Entry* p, BOOL bLeft);
+	void clear(Entry** p, BOOL bLeft);
 	void prepareArray(Entry* p, unsigned int* pindex, BOOL bKey);
 public:
 	BiTreeTable(COMPFUNC);
