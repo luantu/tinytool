@@ -400,8 +400,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 						_stprintf_s(szText, l, szFormat, szCopy); 
 
-						MENUITEMINFO* pmiiCopy = new MENUITEMINFO; 
-						ZeroMemory(pmiiCopy, sizeof(*pmiiCopy)); 
+						MENUITEMINFO* pmiiCopy = (MENUITEMINFO*)calloc(1, sizeof(MENUITEMINFO)); 
 						pmiiCopy->cbSize = sizeof(*pmiiCopy); 
 						pmiiCopy->fMask = MIIM_STRING; 
 						pmiiCopy->dwTypeData = szText; 
@@ -412,6 +411,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 							DrawMenuBar(hWnd); 
 						}
 						delete[] szText; 
+						free(pmiiCopy);
 					}
 					delete[] szCopy; 
 				}
