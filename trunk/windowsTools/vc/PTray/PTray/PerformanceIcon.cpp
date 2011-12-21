@@ -59,16 +59,6 @@ HICON PerformanceIcon::getIcon(char *pCpuPercentages, int nCpu, int displayMemor
 		0x0eca7420, // 7
 		0xeca86420, // 8
 	};
-	//static unsigned char ptCpuLights[] = {
-	//	0x17, 0xd7, 
-	//	0x28, 0xe8,
-	//	0x57, 0x97, 
-	//	0x68, 0xa8, 
-	//	0x37, 0xb7, 
-	//	0x48, 0xc8, 
-	//	0x77, 0x88, 
-	//	0x11, 0x15,
-	//};
 	char buff[CHAR_N];
 
 	HDC hdc = ::GetDC(NULL);
