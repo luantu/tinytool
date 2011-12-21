@@ -9,7 +9,7 @@
 
 #define TIMER_DUR	500
 #define SWM_TRAYMSG	WM_APP//		the message ID sent to our window
-#define MIN_MEM_T	5
+//#define MIN_MEM_T	5
 
 #define SWM_SHOW	WM_APP + 1//	show the window
 #define SWM_HIDE	WM_APP + 2//	hide the window
@@ -75,6 +75,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	// Perform application initialization:
 	if (!InitInstance (hInstance, nCmdShow)) return FALSE;
+
+	// Minimize physical memory once. 
+	::SetProcessWorkingSetSize(::GetCurrentProcess(), -1, -1);
 
 	// Main message loop:
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -245,6 +248,8 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					bMsgBox = TRUE;
 					MessageBox(hWnd, _T("Tiny tool developed by \n    Programus (programus@gmail.com)\n\n[** ini file reloaded **]"), _T(APP_NAME), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 					bMsgBox = FALSE;
+					// Minimize physical memory once. 
+					::SetProcessWorkingSetSize(::GetCurrentProcess(), -1, -1);
 				}
 			}
 			break;
@@ -257,6 +262,8 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						DestroyWindow(hWnd);
 					}
 					bMsgBox = FALSE;
+					// Minimize physical memory once. 
+					::SetProcessWorkingSetSize(::GetCurrentProcess(), -1, -1);
 				}
 			}
 			break;
@@ -304,11 +311,11 @@ INT_PTR CALLBACK TrayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				FuncAllProcess(SetProcessPriority); 
 				ppt.bProcessing = FALSE;
 			}
-			static int count = MIN_MEM_T;
-			if (count++ > MIN_MEM_T) {
-				::SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
-				count %= MIN_MEM_T;
-			}
+			//static int count = MIN_MEM_T;
+			//if (count++ > MIN_MEM_T) {
+			//	::SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
+			//	count %= MIN_MEM_T;
+			//}
 		}
 		break;
 	default:
