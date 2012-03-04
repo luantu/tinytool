@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "VisualRulerData.h"
 
-#define BG_WHITE RGB(0xfe, 0xfe, 0xfe)
+#define BG_WHITE RGB(0xfa, 0xfa, 0xfa)
 
 VisualRulerData::VisualRulerData(__in HWND hWnd)
 {
@@ -16,12 +16,12 @@ VisualRulerData::VisualRulerData(__in HWND hWnd)
 
 	this->m_pointColor = RGB(127, 127, 127); 
 	this->m_pointInMagnifierColor = RGB(0xff, 0x00, 0x00); 
-	this->m_pointInMagnifierAltColor = RGB(0xfe, 0xfe, 0xfe); 
+	this->m_pointInMagnifierAltColor = BG_WHITE; 
 	this->m_magnifierBorderColor = RGB(0, 0, 0); 
 	this->m_focusPointColor = RGB(255, 0, 0); 
 	this->m_disLineColor = RGB(100, 100, 255); 
 	this->m_lockedLineColor = RGB(192, 192, 192); 
-	this->m_textColor = RGB(254, 254, 254); 
+	this->m_textColor = BG_WHITE; 
 	this->m_disTextColor = RGB(255, 255, 128); 
 	this->m_crossLineColor = RGB(255, 128, 0); 
 
