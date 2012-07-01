@@ -143,7 +143,7 @@ UpdateProcessList:
 	Loop, %pCount%
 	{
 	    c := A_Index - 1
-	    if (filter = "" or RegExMatch(pName_%c%, filter) > 0)
+	    if (filter = "" or RegExMatch(pName_%c%, "i)" . filter) > 0)
 	        LV_Add("", pId_%c%, pName_%c%)
 	}
 	LV_ModifyCol(1, "Auto")
