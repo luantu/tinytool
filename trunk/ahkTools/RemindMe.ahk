@@ -80,8 +80,10 @@ ShowProcessList:
 	if (not guiCreated) {
 		Gui, 3: Margin, 0, 0
 		Gui, 3: +Resize
-		Gui, 3: Add, Edit, vProcFilter HwndProcFilterHwnd
-		Gui, 3: Add, ListView, -Multi r50 w300 gListEventHandler vProcList -LV0x10 +LV0x08 Grid Count%pCount% AltSubmit, PID|Names
+		Gui, 3: Add, GroupBox, vFilterBox h53, Filter
+		Gui, 3: Add, Text, xp+6 yp+15 vFilterComment, p/xxxx to filter name or w/xxxx to filter title or just xxxx to filter both
+		Gui, 3: Add, Edit, xp-3 yp+15 vProcFilter HwndProcFilterHwnd
+		Gui, 3: Add, ListView, -Multi r50 w500 x0 y56 gListEventHandler vProcList -LV0x10 +LV0x08 Grid Count%pCount% AltSubmit, PID|Name|Window Title
 		Gui, 3: Add, Button, Hidden Default, OK
 		SetTimer, FilterUpdated, 50
 		guiCreated := True
@@ -116,9 +118,11 @@ ButtonOK:
 	Gui, 3: Default
 	if A_EventInfo = 1
 		return
-    GuiControl, Move, ProcFilter, % "w" . A_GuiWidth
-	GuiControl, Move, ProcList, % "w" . A_GuiWidth . "h" . (A_GuiHeight - 20)
-	LV_ModifyCol(2, A_GuiWidth - 26)
+    GuiControl, Move, FilterBox, % "w" . A_GuiWidth
+    GuiControl, Move, FilterComment, % "w" . (A_GuiWidth - 8)
+    GuiControl, Move, ProcFilter, % "w" . (A_GuiWidth - 8)
+	GuiControl, Move, ProcList, % "w" . A_GuiWidth . "h" . (A_GuiHeight - 56)
+	; LV_ModifyCol(3, A_GuiWidth - 26)
 	return
 
 GuiEscape:
@@ -143,12 +147,25 @@ UpdateProcessList:
 	Loop, %pCount%
 	{
 	    c := A_Index - 1
-	    if (filter = "" or RegExMatch(pName_%c%, "i)" . filter) > 0)
-	        LV_Add("", pId_%c%, pName_%c%)
+	    mtype := SubStr(filter, 1, 2)
+	    realFilter := filter
+	    if (mtype = "p/" or mtype = "w/")
+	    {
+	        mtype := SubStr(mtype, 1, 1)
+	        realFilter := SubStr(realFilter, 3)
+	    }
+	    else
+	    {
+	        mtype := ""
+	    }
+	    posName := RegExMatch(pName_%c%, "i)" . realFilter)
+	    posTitle := RegExMatch(wText_%c%, "i)" . realFilter)
+	    if (realFilter = "" or (mtype = "p" and posName > 0) or (mtype = "w" and posTitle > 0) or (mtype = "" and (posName > 0 or posTitle > 0)))
+	        LV_Add("", pId_%c%, pName_%c%, wText_%c%)
 	}
 	LV_ModifyCol(1, "Auto")
 	LV_ModifyCol(1, "Integer Right")
-	;LV_ModifyCOl(2, "Auto")
+	LV_ModifyCOl(2, "Auto")
 	return
 
 RetrieveProcessList:
@@ -180,21 +197,24 @@ RetrieveProcessList:
     DllCall("Psapi.dll\EnumProcesses", "Ptr", &a, "UInt", s, "UIntP", r)
     Loop, % r // 4  ; parse array for identifiers as DWORDs (32 bits):
     {
-       id := NumGet(a, A_Index * 4, "UInt")
-       pId_%c% := id
-       ; Open process with: PROCESS_VM_READ (0x0010) | PROCESS_QUERY_INFORMATION (0x0400)
-       h := DllCall("OpenProcess", "UInt", 0x0010 | 0x0400, "Int", false, "UInt", id, "Ptr")
-       if !h
+        id := NumGet(a, A_Index * 4, "UInt")
+        ; Open process with: PROCESS_VM_READ (0x0010) | PROCESS_QUERY_INFORMATION (0x0400)
+        h := DllCall("OpenProcess", "UInt", 0x0010 | 0x0400, "Int", false, "UInt", id, "Ptr")
+        if !h
           continue
-       VarSetCapacity(n, s, 0)  ; a buffer that receives the base name of the module:
-       e := DllCall("Psapi.dll\GetModuleBaseName", "Ptr", h, "Ptr", 0, "Str", n, "UInt", A_IsUnicode ? s//2 : s)
-       if !e    ; fall-back method for 64-bit processes when in 32-bit mode:
+        VarSetCapacity(n, s, 0)  ; a buffer that receives the base name of the module:
+        e := DllCall("Psapi.dll\GetModuleBaseName", "Ptr", h, "Ptr", 0, "Str", n, "UInt", A_IsUnicode ? s//2 : s)
+        if !e    ; fall-back method for 64-bit processes when in 32-bit mode:
           if e := DllCall("Psapi.dll\GetProcessImageFileName", "Ptr", h, "Str", n, "UInt", A_IsUnicode ? s//2 : s)
              SplitPath n, n
-       DllCall("CloseHandle", "Ptr", h)  ; close process handle to save memory
-       pName_%c% := n
-       if (n && e)  ; if image is not null add to list:
-          l .= n . d, c++
+        DllCall("CloseHandle", "Ptr", h)  ; close process handle to save memory
+        if (n && e)  ; if image is not null add to list:
+        {
+            pId_%c% := id
+            pName_%c% := n
+            WinGetTitle, wText_%c%, ahk_pid %id%
+            l .= n . d, c++
+        }
     }
     pCount := c
     DllCall("FreeLibrary", "Ptr", hModule)  ; unload the library to free memory
